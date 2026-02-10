@@ -13,26 +13,46 @@ import {
   Users,
   FileText,
   X,
+  Bell,
+  Award,
+  FolderOpen,
+  ClipboardCheck,
+  Building2,
+  Shield,
+  MessageCircle,
 } from 'lucide-react'
 
 const studentNav = [
-  { name: 'الرئيسية', href: '/student', icon: Home },
+  { name: 'الرئيسية', href: '/student/dashboard', icon: Home },
   { name: 'المواد الدراسية', href: '/student/subjects', icon: BookOpen },
   { name: 'التقويم', href: '/student/calendar', icon: Calendar },
+  { name: 'مكتبة الموارد', href: '/student/resources', icon: FolderOpen },
   { name: 'الأنشطة والفرص', href: '/student/activities', icon: Sparkles },
   { name: 'النقاط والترتيب', href: '/student/points', icon: Trophy },
 ]
 
 const professorNav = [
-  { name: 'الرئيسية', href: '/professor', icon: Home },
+  { name: 'الرئيسية', href: '/professor/dashboard', icon: Home },
   { name: 'المقررات', href: '/professor/courses', icon: BookOpen },
+  { name: 'أسئلة الطلاب', href: '/professor/questions', icon: MessageCircle },
+  { name: 'نتائج الاختبارات', href: '/professor/grading', icon: ClipboardCheck },
   { name: 'أداء الطلاب', href: '/professor/performance', icon: BarChart3 },
+  { name: 'الجدول', href: '/professor/calendar', icon: Calendar },
   { name: 'الإعلانات', href: '/professor/announcements', icon: FileText },
+]
+
+const adminNav = [
+  { name: 'لوحة التحكم', href: '/admin/dashboard', icon: Home },
+  { name: 'إدارة الطلاب', href: '/admin/students', icon: Users },
+  { name: 'إدارة الأساتذة', href: '/admin/professors', icon: GraduationCap },
+  { name: 'إدارة الكليات', href: '/admin/colleges', icon: Building2 },
+  { name: 'إدارة المقررات', href: '/admin/materials', icon: BookOpen },
+  { name: 'إدارة الأنشطة', href: '/admin/activities', icon: Sparkles },
 ]
 
 export function Sidebar({ userType, isOpen, onClose }) {
   const location = useLocation()
-  const navItems = userType === 'professor' ? professorNav : studentNav
+  const navItems = userType === 'admin' ? adminNav : userType === 'professor' ? professorNav : studentNav
 
   return (
     <>
@@ -93,15 +113,21 @@ export function Sidebar({ userType, isOpen, onClose }) {
           </nav>
 
           <div className="p-4 border-t border-gray-100">
+            {userType !== 'admin' && (
+              <NavLink
+                to={userType === 'professor' ? '/professor/settings' : '/student/settings'}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+                الإعدادات
+              </NavLink>
+            )}
             <NavLink
-              to="/settings"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <Settings className="w-5 h-5" />
-              الإعدادات
-            </NavLink>
-            <NavLink
-              to="/"
+              to={
+                userType === 'admin' ? '/admin/login' :
+                userType === 'professor' ? '/professor/login' :
+                '/student/login'
+              }
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-5 h-5" />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ChevronRight,
   ChevronLeft,
@@ -6,11 +6,13 @@ import {
   Clock,
   MapPin,
   FileText,
+  Loader2,
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
-import { calendarEvents } from '../../data/mockData'
+import { studentService } from '../../services/supabaseService'
+import { useAuth } from '../../contexts/AuthContext'
 
 const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 const MONTHS = [
@@ -19,8 +21,29 @@ const MONTHS = [
 ]
 
 export function StudentCalendar() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 19))
+  const { user } = useAuth()
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState('week')
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user?.id) {
+      loadEvents()
+    }
+  }, [user])
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true)
+      const data = await studentService.getCalendarEvents(user.id)
+      setEvents(data || [])
+    } catch (error) {
+      console.error('Error loading calendar events:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getWeekDays = (date) => {
     const week = []
@@ -39,7 +62,7 @@ export function StudentCalendar() {
 
   const getEventsForDate = (date) => {
     const dateStr = date.toISOString().split('T')[0]
-    return calendarEvents.filter(e => e.date === dateStr)
+    return events.filter(e => e.date === dateStr)
   }
 
   const navigateWeek = (direction) => {
@@ -56,6 +79,8 @@ export function StudentCalendar() {
         return 'border-r-4 border-r-red-500 bg-red-50'
       case 'quiz_offline':
         return 'border-r-4 border-r-orange-500 bg-orange-50'
+      case 'exam':
+        return 'border-r-4 border-r-red-600 bg-red-50'
       default:
         return ''
     }
@@ -69,22 +94,34 @@ export function StudentCalendar() {
         return <Badge variant="danger">اختبار إلكتروني</Badge>
       case 'quiz_offline':
         return <Badge variant="warning">اختبار حضوري</Badge>
+      case 'exam':
+        return <Badge variant="danger">اختبار</Badge>
+      case 'office_hours':
+        return <Badge variant="purple">ساعات مكتبية</Badge>
       default:
-        return null
+        return <Badge>{type}</Badge>
     }
   }
 
   const isToday = (date) => {
-    const today = new Date(2026, 0, 19)
+    const today = new Date()
     return date.toDateString() === today.toDateString()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">التقويم الدراسي</h1>
-          <p className="text-gray-500 mt-1">جدول المحاضرات والاختبارات</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">التقويم الدراسي</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">جدول المحاضرات والاختبارات</p>
         </div>
         
         <div className="flex items-center gap-2">
@@ -112,10 +149,10 @@ export function StudentCalendar() {
             <ChevronRight className="w-5 h-5" />
           </Button>
           <div className="text-center">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {weekDays[0].getDate()} - {weekDays[6].getDate()} {MONTHS[weekDays[6].getMonth()]}
             </p>
           </div>
@@ -129,35 +166,35 @@ export function StudentCalendar() {
       {view === 'week' && (
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
           {weekDays.map((day, index) => {
-            const events = getEventsForDate(day)
+            const dayEvents = getEventsForDate(day)
             const dayIsToday = isToday(day)
             
             return (
               <div key={index} className="space-y-2">
-                <div className={`text-center p-2 rounded-lg ${dayIsToday ? 'bg-primary-600 text-white' : 'bg-gray-100'}`}>
-                  <p className={`text-xs ${dayIsToday ? 'text-primary-100' : 'text-gray-500'}`}>
+                <div className={`text-center p-2 rounded-lg ${dayIsToday ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                  <p className={`text-xs ${dayIsToday ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'}`}>
                     {DAYS[day.getDay()]}
                   </p>
-                  <p className={`text-lg font-bold ${dayIsToday ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`text-lg font-bold ${dayIsToday ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                     {day.getDate()}
                   </p>
                 </div>
                 
                 <div className="space-y-2 min-h-[200px]">
-                  {events.length > 0 ? (
-                    events.map((event) => (
+                  {dayEvents.length > 0 ? (
+                    dayEvents.map((event) => (
                       <div
                         key={event.id}
-                        className={`p-3 rounded-lg bg-white border shadow-sm ${getEventTypeStyle(event.type)}`}
-                        style={event.type === 'lecture' ? { borderRightColor: event.color } : {}}
+                        className={`p-3 rounded-lg bg-white dark:bg-gray-800 border shadow-sm ${getEventTypeStyle(event.type)}`}
+                        style={event.type === 'lecture' ? { borderRightColor: event.color || '#3b82f6' } : {}}
                       >
-                        <p className="font-medium text-gray-900 text-sm truncate">{event.title}</p>
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{event.title}</p>
+                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
                           <Clock className="w-3 h-3" />
                           <span>{event.time}</span>
                         </div>
                         {event.location && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <MapPin className="w-3 h-3" />
                             <span>{event.location}</span>
                           </div>
@@ -180,29 +217,29 @@ export function StudentCalendar() {
       {view === 'month' && (
         <Card>
           <div className="divide-y divide-gray-100">
-            {calendarEvents.map((event) => (
-              <div key={event.id} className="p-4 flex items-center gap-4 hover:bg-gray-50">
+            {events.length > 0 ? events.map((event) => (
+              <div key={event.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
                 <div
                   className="w-1 h-12 rounded-full"
-                  style={{ backgroundColor: event.color }}
+                  style={{ backgroundColor: event.color || '#3b82f6' }}
                 />
                 <div className="w-16 text-center">
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {new Date(event.date).getDate()}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {MONTHS[new Date(event.date).getMonth()]}
                   </p>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-gray-900 truncate">{event.title}</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white truncate">{event.title}</h3>
                     {getEventTypeBadge(event.type)}
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span>{event.time} - {event.endTime}</span>
+                      <span>{event.time}{event.end_time ? ` - ${event.end_time}` : ''}</span>
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-1">
@@ -213,26 +250,28 @@ export function StudentCalendar() {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">لا توجد أحداث في التقويم</div>
+            )}
           </div>
         </Card>
       )}
 
       {/* Legend */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-900 mb-3">دليل الألوان</h3>
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">دليل الألوان</h3>
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-sm text-gray-600">محاضرات</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">محاضرات</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span className="text-sm text-gray-600">اختبارات إلكترونية</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">اختبارات إلكترونية</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-orange-500" />
-            <span className="text-sm text-gray-600">اختبارات حضورية</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">اختبارات حضورية</span>
           </div>
         </div>
       </Card>

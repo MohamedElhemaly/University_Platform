@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   BookOpen,
@@ -8,17 +9,55 @@ import {
   Clock,
   CheckCircle2,
   MessageCircle,
+  Loader2,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { Progress } from '../../components/ui/Progress'
-import { currentProfessor, professorCourses, studentPerformance, questions } from '../../data/mockData'
+import { professorService } from '../../services/supabaseService'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function ProfessorDashboard() {
-  const totalStudents = professorCourses.reduce((sum, c) => sum + c.students, 0)
-  const totalLectures = professorCourses.reduce((sum, c) => sum + c.lecturesCount, 0)
-  const activeQuizzes = professorCourses.reduce((sum, c) => sum + c.activeQuizzes, 0)
-  const unansweredQuestions = questions.filter(q => !q.answer).length
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
+  const [courses, setCourses] = useState([])
+  const [recentQuestions, setRecentQuestions] = useState([])
+
+  useEffect(() => {
+    if (user?.id) {
+      loadDashboardData()
+    }
+  }, [user])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      const data = await professorService.getDashboard(user.id)
+      setProfile(data.profile)
+      setCourses(data.courses || [])
+      setRecentQuestions(data.recentQuestions || [])
+    } catch (error) {
+      console.error('Error loading dashboard:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const professorName = profile?.name || user?.name || 'الأستاذ'
+  const professorTitle = profile?.title || 'أستاذ'
+  const professorDept = profile?.departments?.name || 'القسم'
+  const totalStudents = courses.reduce((sum, c) => sum + (c.student_materials?.[0]?.count || 0), 0)
+  const totalQuizzes = courses.reduce((sum, c) => sum + (c.quizzes?.[0]?.count || 0), 0)
+  const unansweredQuestions = recentQuestions.length
 
   return (
     <div className="space-y-6">
@@ -26,14 +65,14 @@ export function ProfessorDashboard() {
       <div className="bg-gradient-to-l from-green-600 to-green-700 rounded-2xl p-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold mb-1">مرحباً، {currentProfessor.name}! 👋</h1>
+            <h1 className="text-2xl font-bold mb-1">مرحباً، {professorName}! 👋</h1>
             <p className="text-green-100">
-              {currentProfessor.title} • {currentProfessor.department}
+              {professorTitle} • {professorDept}
             </p>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <p className="text-3xl font-bold">{professorCourses.length}</p>
+              <p className="text-3xl font-bold">{courses.length}</p>
               <p className="text-green-200 text-sm">مقرر</p>
             </div>
             <div className="w-px h-10 bg-green-400" />
@@ -46,26 +85,15 @@ export function ProfessorDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{totalLectures}</p>
-              <p className="text-sm text-gray-500">محاضرة</p>
-            </div>
-          </div>
-        </Card>
+      <div className="grid grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{activeQuizzes}</p>
-              <p className="text-sm text-gray-500">اختبار نشط</p>
+              <p className="text-2xl font-bold text-gray-900">{totalQuizzes}</p>
+              <p className="text-sm text-gray-500">اختبار</p>
             </div>
           </div>
         </Card>
@@ -75,22 +103,24 @@ export function ProfessorDashboard() {
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{studentPerformance.stats.averageScore}%</p>
+              <p className="text-2xl font-bold text-gray-900">0%</p>
               <p className="text-sm text-gray-500">متوسط الدرجات</p>
             </div>
           </div>
         </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-purple-600" />
+        <Link to="/professor/questions">
+          <Card className="p-4 hover:border-purple-200 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{unansweredQuestions}</p>
+                <p className="text-sm text-gray-500">سؤال بانتظار الرد</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{unansweredQuestions}</p>
-              <p className="text-sm text-gray-500">سؤال بانتظار الرد</p>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -104,15 +134,15 @@ export function ProfessorDashboard() {
           </div>
           
           <div className="space-y-4">
-            {professorCourses.map((course) => (
+            {courses.length > 0 ? courses.map((course) => (
               <Link key={course.id} to={`/professor/courses/${course.id}`}>
                 <Card className="group">
                   <div className="flex items-center gap-4">
                     <div
                       className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-                      style={{ backgroundColor: course.color }}
+                      style={{ backgroundColor: course.color || '#3B82F6' }}
                     >
-                      {course.code.slice(0, 2)}
+                      {course.code?.slice(0, 2) || 'MA'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -124,15 +154,15 @@ export function ProfessorDashboard() {
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
-                          <span>{course.students} طالب</span>
+                          <span>{course.student_materials?.[0]?.count || 0} طالب</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <BookOpen className="w-4 h-4" />
-                          <span>{course.completedLectures}/{course.lecturesCount} محاضرة</span>
+                          <span>{course.lectures?.[0]?.count || 0} محاضرة</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <FileText className="w-4 h-4" />
-                          <span>{course.activeQuizzes} اختبار</span>
+                          <span>{course.quizzes?.[0]?.count || 0} اختبار</span>
                         </div>
                       </div>
                     </div>
@@ -142,15 +172,18 @@ export function ProfessorDashboard() {
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-gray-500">تقدم المقرر</span>
-                      <span className="font-medium text-gray-900">
-                        {Math.round((course.completedLectures / course.lecturesCount) * 100)}%
-                      </span>
+                      <span className="font-medium text-gray-900">0%</span>
                     </div>
-                    <Progress value={course.completedLectures} max={course.lecturesCount} />
+                    <Progress value={0} max={1} />
                   </div>
                 </Card>
               </Link>
-            ))}
+            )) : (
+              <div className="text-center py-8 text-gray-500">
+                <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>لا توجد مقررات مسجلة بعد</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -165,17 +198,26 @@ export function ProfessorDashboard() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {questions.filter(q => !q.answer).slice(0, 3).map((question) => (
-                <div key={question.id} className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-900 line-clamp-2">{question.question}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-gray-500">{question.studentName}</span>
-                    <Badge variant="info">{question.votes} صوت</Badge>
+              {recentQuestions.length > 0 ? recentQuestions.slice(0, 3).map((question) => (
+                <Link key={question.id} to="/professor/questions">
+                  <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <p className="text-sm text-gray-900 line-clamp-2">{question.question_text}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-gray-500">{question.students?.profiles?.name}</span>
+                      <Badge variant="info">{question.votes || 0} صوت</Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {unansweredQuestions === 0 && (
+                </Link>
+              )) : (
                 <p className="text-gray-500 text-sm text-center py-4">لا توجد أسئلة بانتظار الرد</p>
+              )}
+              {recentQuestions.length > 0 && (
+                <Link
+                  to="/professor/questions"
+                  className="block text-center text-sm text-primary-600 hover:underline pt-2"
+                >
+                  عرض جميع الأسئلة
+                </Link>
               )}
             </CardContent>
           </Card>
@@ -186,25 +228,7 @@ export function ProfessorDashboard() {
               <CardTitle>أفضل الطلاب</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {studentPerformance.topStudents.map((student, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                    index === 1 ? 'bg-gray-200 text-gray-700' :
-                    index === 2 ? 'bg-orange-100 text-orange-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{student.name}</p>
-                    <p className="text-xs text-gray-500">{student.quizzes} اختبارات</p>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-gray-900">{student.score}%</p>
-                  </div>
-                </div>
-              ))}
+              <p className="text-gray-500 text-sm text-center py-4">لا توجد بيانات بعد</p>
             </CardContent>
           </Card>
 

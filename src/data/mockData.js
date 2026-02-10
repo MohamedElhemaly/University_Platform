@@ -583,6 +583,195 @@ export const professorCourses = [
   },
 ]
 
+// Student Grades Data
+export const studentGrades = {
+  currentGPA: 3.65,
+  totalCredits: 96,
+  completedCredits: 72,
+  semesterGPA: 3.78,
+  semesters: [
+    {
+      id: 1,
+      name: 'الفصل الأول 2025-2026',
+      status: 'current',
+      gpa: 3.78,
+      courses: [
+        { id: 1, name: 'هندسة البرمجيات', code: 'CS301', credits: 3, grade: 'A-', points: 3.7, midterm: 42, final: null, assignments: 28, quizzes: 45, total: null },
+        { id: 2, name: 'قواعد البيانات المتقدمة', code: 'CS302', credits: 3, grade: 'A', points: 4.0, midterm: 45, final: null, assignments: 30, quizzes: 52, total: null },
+        { id: 3, name: 'الذكاء الاصطناعي', code: 'CS303', credits: 3, grade: 'B+', points: 3.3, midterm: 38, final: null, assignments: 25, quizzes: 40, total: null },
+        { id: 4, name: 'أمن المعلومات', code: 'CS304', credits: 3, grade: 'A', points: 4.0, midterm: 44, final: null, assignments: 29, quizzes: 48, total: null },
+        { id: 5, name: 'تطوير تطبيقات الويب', code: 'CS305', credits: 3, grade: 'A-', points: 3.7, midterm: 40, final: null, assignments: 27, quizzes: 44, total: null },
+      ],
+    },
+    {
+      id: 2,
+      name: 'الفصل الثاني 2024-2025',
+      status: 'completed',
+      gpa: 3.52,
+      courses: [
+        { id: 6, name: 'هياكل البيانات', code: 'CS201', credits: 3, grade: 'A', points: 4.0, midterm: 46, final: 92, assignments: 28, quizzes: 47, total: 95 },
+        { id: 7, name: 'تصميم الخوارزميات', code: 'CS202', credits: 3, grade: 'B+', points: 3.3, midterm: 40, final: 78, assignments: 25, quizzes: 42, total: 82 },
+        { id: 8, name: 'نظم التشغيل', code: 'CS203', credits: 3, grade: 'A-', points: 3.7, midterm: 42, final: 85, assignments: 27, quizzes: 45, total: 88 },
+        { id: 9, name: 'شبكات الحاسب', code: 'CS204', credits: 3, grade: 'B', points: 3.0, midterm: 35, final: 72, assignments: 24, quizzes: 38, total: 76 },
+      ],
+    },
+    {
+      id: 3,
+      name: 'الفصل الأول 2024-2025',
+      status: 'completed',
+      gpa: 3.65,
+      courses: [
+        { id: 10, name: 'البرمجة الكائنية', code: 'CS102', credits: 3, grade: 'A', points: 4.0, midterm: 48, final: 94, assignments: 30, quizzes: 50, total: 97 },
+        { id: 11, name: 'الرياضيات المتقطعة', code: 'MATH201', credits: 3, grade: 'B+', points: 3.3, midterm: 38, final: 80, assignments: 26, quizzes: 40, total: 83 },
+        { id: 12, name: 'الإحصاء والاحتمالات', code: 'STAT101', credits: 3, grade: 'A-', points: 3.7, midterm: 41, final: 86, assignments: 28, quizzes: 44, total: 89 },
+      ],
+    },
+  ],
+}
+
+// Notifications Data
+export const studentNotifications = [
+  { id: 1, type: 'quiz', title: 'اختبار قادم', message: 'اختبار أنماط التصميم بعد 6 أيام', date: '2026-01-19T10:00:00', read: false, link: '/student/subjects/1' },
+  { id: 2, type: 'announcement', title: 'إعلان جديد', message: 'تم تأجيل موعد تسليم المشروع النهائي', date: '2026-01-18T14:30:00', read: false, link: '/student/subjects/1' },
+  { id: 3, type: 'grade', title: 'درجة جديدة', message: 'تم رصد درجة اختبار SQL المتقدم: 52/60', date: '2026-01-17T09:00:00', read: true, link: '/student/grades' },
+  { id: 4, type: 'activity', title: 'فرصة تدريب', message: 'فرصة تدريب صيفي في شركة التقنية المتقدمة', date: '2026-01-16T11:00:00', read: true, link: '/student/activities' },
+  { id: 5, type: 'quiz', title: 'نتيجة اختبار', message: 'تم تصحيح اختبار الوحدة الثانية', date: '2026-01-15T16:00:00', read: true, link: '/student/subjects/1' },
+  { id: 6, type: 'announcement', title: 'ساعات مكتبية', message: 'ساعات مكتبية إضافية يوم الأربعاء', date: '2026-01-14T08:00:00', read: true, link: '/student/subjects/1' },
+  { id: 7, type: 'points', title: 'نقاط جديدة', message: 'حصلت على 45 نقطة من اختبار أنماط التصميم', date: '2026-01-13T12:00:00', read: true, link: '/student/points' },
+  { id: 8, type: 'grade', title: 'درجة جديدة', message: 'تم رصد درجة اختبار الوحدة الثانية: 45/50', date: '2026-01-12T10:00:00', read: true, link: '/student/grades' },
+]
+
+export const professorNotifications = [
+  { id: 1, type: 'question', title: 'سؤال جديد', message: 'عبدالله خالد سأل: متى يجب تجنب استخدام نمط Singleton؟', date: '2026-01-19T12:00:00', read: false, link: '/professor/courses/1/lectures/5' },
+  { id: 2, type: 'question', title: 'سؤال جديد', message: 'نورة أحمد سألت: هل هناك أنماط تصميم خاصة بتطبيقات الموبايل؟', date: '2026-01-19T13:30:00', read: false, link: '/professor/courses/1/lectures/5' },
+  { id: 3, type: 'submission', title: 'تسليم اختبار', message: '38 طالب أكملوا اختبار الوحدة الثانية', date: '2026-01-18T15:00:00', read: true, link: '/professor/grading' },
+  { id: 4, type: 'reminder', title: 'تذكير', message: 'محاضرة هندسة البرمجيات غداً الساعة 9:00', date: '2026-01-18T20:00:00', read: true, link: '/professor/calendar' },
+  { id: 5, type: 'system', title: 'تحديث النظام', message: 'تم إضافة ميزة توليد الأسئلة بالذكاء الاصطناعي', date: '2026-01-17T10:00:00', read: true, link: null },
+]
+
+// Study Resources Data
+export const studyResources = [
+  { id: 1, name: 'شرائح المحاضرة - أنماط التصميم', type: 'pdf', size: '2.4 MB', subjectId: 1, subjectName: 'هندسة البرمجيات', lectureId: 5, uploadDate: '2026-01-19', downloads: 42 },
+  { id: 2, name: 'ملاحظات إضافية - Design Patterns', type: 'pdf', size: '856 KB', subjectId: 1, subjectName: 'هندسة البرمجيات', lectureId: 5, uploadDate: '2026-01-19', downloads: 35 },
+  { id: 3, name: 'فيديو توضيحي - Singleton Pattern', type: 'video', duration: '15:30', subjectId: 1, subjectName: 'هندسة البرمجيات', lectureId: 5, uploadDate: '2026-01-19', downloads: 28 },
+  { id: 4, name: 'شرائح المحاضرة - SQL المتقدم', type: 'pdf', size: '3.1 MB', subjectId: 2, subjectName: 'قواعد البيانات المتقدمة', lectureId: 10, uploadDate: '2026-01-18', downloads: 38 },
+  { id: 5, name: 'تمارين عملية - Joins', type: 'pdf', size: '1.2 MB', subjectId: 2, subjectName: 'قواعد البيانات المتقدمة', lectureId: 10, uploadDate: '2026-01-18', downloads: 45 },
+  { id: 6, name: 'شرائح المحاضرة - الشبكات العصبية', type: 'pdf', size: '4.5 MB', subjectId: 3, subjectName: 'الذكاء الاصطناعي', lectureId: 15, uploadDate: '2026-01-17', downloads: 52 },
+  { id: 7, name: 'كود Python - Neural Networks', type: 'code', size: '45 KB', subjectId: 3, subjectName: 'الذكاء الاصطناعي', lectureId: 15, uploadDate: '2026-01-17', downloads: 61 },
+  { id: 8, name: 'فيديو - مقدمة في التشفير', type: 'video', duration: '22:45', subjectId: 4, subjectName: 'أمن المعلومات', lectureId: 20, uploadDate: '2026-01-16', downloads: 33 },
+  { id: 9, name: 'شرائح المحاضرة - React Hooks', type: 'pdf', size: '2.8 MB', subjectId: 5, subjectName: 'تطوير تطبيقات الويب', lectureId: 25, uploadDate: '2026-01-15', downloads: 48 },
+  { id: 10, name: 'مشروع تطبيقي - Todo App', type: 'code', size: '125 KB', subjectId: 5, subjectName: 'تطوير تطبيقات الويب', lectureId: 25, uploadDate: '2026-01-15', downloads: 55 },
+]
+
+// Professor Calendar/Schedule Data
+export const professorSchedule = [
+  { id: 1, title: 'هندسة البرمجيات', type: 'lecture', courseId: 1, date: '2026-01-19', time: '09:00', endTime: '10:30', location: 'قاعة 201', color: '#3b82f6', recurring: true },
+  { id: 2, title: 'مقدمة في البرمجة', type: 'lecture', courseId: 2, date: '2026-01-19', time: '11:00', endTime: '12:30', location: 'قاعة 105', color: '#10b981', recurring: true },
+  { id: 3, title: 'ساعات مكتبية', type: 'office_hours', date: '2026-01-19', time: '14:00', endTime: '16:00', location: 'مكتب 312', color: '#8b5cf6', recurring: true },
+  { id: 4, title: 'تحليل وتصميم النظم', type: 'lecture', courseId: 3, date: '2026-01-20', time: '09:00', endTime: '10:30', location: 'قاعة 301', color: '#8b5cf6', recurring: true },
+  { id: 5, title: 'هندسة البرمجيات', type: 'lecture', courseId: 1, date: '2026-01-21', time: '09:00', endTime: '10:30', location: 'قاعة 201', color: '#3b82f6', recurring: true },
+  { id: 6, title: 'اجتماع قسم', type: 'meeting', date: '2026-01-21', time: '13:00', endTime: '14:00', location: 'غرفة الاجتماعات', color: '#f59e0b', recurring: false },
+  { id: 7, title: 'مقدمة في البرمجة', type: 'lecture', courseId: 2, date: '2026-01-22', time: '11:00', endTime: '12:30', location: 'قاعة 105', color: '#10b981', recurring: true },
+  { id: 8, title: 'تحليل وتصميم النظم', type: 'lecture', courseId: 3, date: '2026-01-23', time: '09:00', endTime: '10:30', location: 'قاعة 301', color: '#8b5cf6', recurring: true },
+  { id: 9, title: 'ساعات مكتبية', type: 'office_hours', date: '2026-01-23', time: '14:00', endTime: '16:00', location: 'مكتب 312', color: '#8b5cf6', recurring: true },
+  { id: 10, title: 'اختبار أنماط التصميم', type: 'exam', courseId: 1, date: '2026-01-25', time: '10:00', endTime: '10:30', location: 'قاعة 201', color: '#ef4444', recurring: false },
+]
+
+// Auto-Graded Quiz Results for Professor
+export const quizResults = [
+  {
+    id: 1,
+    quizId: 4,
+    quizTitle: 'اختبار الوحدة الثانية',
+    courseName: 'هندسة البرمجيات',
+    courseCode: 'CS301',
+    totalStudents: 45,
+    submitted: 42,
+    averageScore: 82,
+    highestScore: 98,
+    lowestScore: 45,
+    passRate: 88,
+    totalPoints: 50,
+    date: '2026-01-10',
+    duration: '20 دقيقة',
+    questionsCount: 10,
+    students: [
+      { id: 1, name: 'سارة محمد الشمري', submittedAt: '2026-01-10T09:15:00', score: 48, total: 50, percentage: 96, timeSpent: '15:30', correctAnswers: 9, wrongAnswers: 1 },
+      { id: 2, name: 'عمر خالد العنزي', submittedAt: '2026-01-10T09:20:00', score: 46, total: 50, percentage: 92, timeSpent: '18:45', correctAnswers: 9, wrongAnswers: 1 },
+      { id: 3, name: 'لمى سعود الدوسري', submittedAt: '2026-01-10T09:25:00', score: 45, total: 50, percentage: 90, timeSpent: '16:20', correctAnswers: 9, wrongAnswers: 1 },
+      { id: 4, name: 'فيصل عبدالله المالكي', submittedAt: '2026-01-10T09:30:00', score: 42, total: 50, percentage: 84, timeSpent: '19:10', correctAnswers: 8, wrongAnswers: 2 },
+      { id: 5, name: 'هند ناصر القحطاني', submittedAt: '2026-01-10T09:35:00', score: 40, total: 50, percentage: 80, timeSpent: '17:55', correctAnswers: 8, wrongAnswers: 2 },
+      { id: 6, name: 'يوسف أحمد الغامدي', submittedAt: '2026-01-10T09:40:00', score: 38, total: 50, percentage: 76, timeSpent: '20:00', correctAnswers: 7, wrongAnswers: 3 },
+      { id: 7, name: 'منال سليمان الحربي', submittedAt: '2026-01-10T09:45:00', score: 35, total: 50, percentage: 70, timeSpent: '19:30', correctAnswers: 7, wrongAnswers: 3 },
+      { id: 8, name: 'أحمد محمد العلي', submittedAt: '2026-01-10T09:50:00', score: 49, total: 50, percentage: 98, timeSpent: '12:15', correctAnswers: 10, wrongAnswers: 0 },
+    ],
+    scoreDistribution: [
+      { range: '90-100', count: 8 },
+      { range: '80-89', count: 15 },
+      { range: '70-79', count: 12 },
+      { range: '60-69', count: 5 },
+      { range: 'أقل من 60', count: 2 },
+    ],
+  },
+  {
+    id: 2,
+    quizId: 5,
+    quizTitle: 'اختبار SQL المتقدم',
+    courseName: 'قواعد البيانات المتقدمة',
+    courseCode: 'CS302',
+    totalStudents: 38,
+    submitted: 36,
+    averageScore: 78,
+    highestScore: 95,
+    lowestScore: 52,
+    passRate: 85,
+    totalPoints: 60,
+    date: '2026-01-08',
+    duration: '25 دقيقة',
+    questionsCount: 12,
+    students: [
+      { id: 9, name: 'سارة محمد الشمري', submittedAt: '2026-01-08T10:15:00', score: 57, total: 60, percentage: 95, timeSpent: '20:30', correctAnswers: 11, wrongAnswers: 1 },
+      { id: 10, name: 'عمر خالد العنزي', submittedAt: '2026-01-08T10:20:00', score: 52, total: 60, percentage: 87, timeSpent: '23:45', correctAnswers: 10, wrongAnswers: 2 },
+    ],
+    scoreDistribution: [
+      { range: '90-100', count: 5 },
+      { range: '80-89', count: 12 },
+      { range: '70-79', count: 10 },
+      { range: '60-69', count: 6 },
+      { range: 'أقل من 60', count: 3 },
+    ],
+  },
+  {
+    id: 3,
+    quizId: 6,
+    quizTitle: 'اختبار أنماط التصميم',
+    courseName: 'هندسة البرمجيات',
+    courseCode: 'CS301',
+    totalStudents: 45,
+    submitted: 40,
+    averageScore: 75,
+    highestScore: 100,
+    lowestScore: 40,
+    passRate: 82,
+    totalPoints: 50,
+    date: '2026-01-15',
+    duration: '20 دقيقة',
+    questionsCount: 10,
+    students: [
+      { id: 11, name: 'أحمد محمد العلي', submittedAt: '2026-01-15T14:00:00', score: 50, total: 50, percentage: 100, timeSpent: '14:20', correctAnswers: 10, wrongAnswers: 0 },
+      { id: 12, name: 'نورة سعد القحطاني', submittedAt: '2026-01-15T14:30:00', score: 45, total: 50, percentage: 90, timeSpent: '18:10', correctAnswers: 9, wrongAnswers: 1 },
+      { id: 13, name: 'بدر محمد الزهراني', submittedAt: '2026-01-15T15:00:00', score: 42, total: 50, percentage: 84, timeSpent: '19:45', correctAnswers: 8, wrongAnswers: 2 },
+    ],
+    scoreDistribution: [
+      { range: '90-100', count: 6 },
+      { range: '80-89', count: 14 },
+      { range: '70-79', count: 10 },
+      { range: '60-69', count: 7 },
+      { range: 'أقل من 60', count: 3 },
+    ],
+  },
+]
+
 export const studentPerformance = {
   quizCompletion: [
     { name: 'الأسبوع 1', completed: 92 },
