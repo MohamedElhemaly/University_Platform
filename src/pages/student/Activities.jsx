@@ -25,6 +25,12 @@ import { studentService } from '../../services/supabaseService'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate, getRelativeTime } from '../../lib/utils'
 
+const ensureAbsoluteUrl = (url) => {
+  if (!url) return url
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return 'https://' + url
+}
+
 const CATEGORIES = [
   { id: 'all', label: 'الكل', icon: null },
   { id: 'event', label: 'فعاليات', icon: Calendar },
@@ -258,7 +264,7 @@ export function StudentActivities() {
 
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                 {activity.link ? (
-                  <a href={activity.link} target="_blank" rel="noopener noreferrer">
+                  <a href={ensureAbsoluteUrl(activity.link)} target="_blank" rel="noopener noreferrer">
                     <Button className="w-full" variant="outline" size="sm">
                       <ExternalLink className="w-4 h-4" />
                       التسجيل

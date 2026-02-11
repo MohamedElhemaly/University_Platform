@@ -41,6 +41,7 @@ export function StudentQuiz() {
   const [previousSubmissions, setPreviousSubmissions] = useState([])
   const [attemptsBlocked, setAttemptsBlocked] = useState(false)
   const [maxAttempts, setMaxAttempts] = useState(1)
+  const [submitError, setSubmitError] = useState(null)
 
   // Load quiz data
   useEffect(() => {
@@ -212,7 +213,7 @@ export function StudentQuiz() {
       })
 
       // Submit to backend with score
-      await studentService.submitQuiz(quizId, user.id, answers, timeSpent, score, quiz.totalPoints)
+      await studentService.submitQuiz(parseInt(quizId), user.id, answers, timeSpent, score, quiz.totalPoints)
 
       setResult({
         score,
@@ -224,6 +225,7 @@ export function StudentQuiz() {
       setIsSubmitted(true)
     } catch (error) {
       console.error('Failed to submit quiz:', error)
+      setSubmitError('حدث خطأ أثناء تسليم الاختبار. يرجى المحاولة مرة أخرى.')
     } finally {
       setIsSubmitting(false)
     }
@@ -557,6 +559,17 @@ export function StudentQuiz() {
         </div>
       </div>
 
+      {/* Submit Error Message */}
+      {submitError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 shadow-lg max-w-md">
+          <XCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <p className="text-sm text-red-800 font-medium">{submitError}</p>
+          <button onClick={() => setSubmitError(null)} className="p-1 hover:bg-red-100 rounded-lg shrink-0">
+            <span className="text-red-400 text-lg">✕</span>
+          </button>
+        </div>
+      )}
+
       {/* Confirm Submit Modal */}
       {showConfirmSubmit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -576,7 +589,7 @@ export function StudentQuiz() {
                 <Button variant="outline" onClick={() => setShowConfirmSubmit(false)}>
                   مراجعة الإجابات
                 </Button>
-                <Button onClick={() => handleSubmit(true)} className="bg-green-600 hover:bg-green-700">
+                <Button onClick={() => { setSubmitError(null); handleSubmit(true); }} className="bg-green-600 hover:bg-green-700">
                   تسليم الاختبار
                 </Button>
               </div>

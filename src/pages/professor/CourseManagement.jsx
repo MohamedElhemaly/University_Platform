@@ -56,7 +56,7 @@ export function CourseManagement() {
   const [lectureFiles, setLectureFiles] = useState([])
 
   // Quiz state
-  const [newQuiz, setNewQuiz] = useState({ title: '', type: 'online', duration: 20, points: 50, due_date: '', max_attempts: 1 })
+  const [newQuiz, setNewQuiz] = useState({ title: '', type: 'online', duration: 20, points: 50, due_date: '', max_attempts: 1, is_published: true })
   const [quizQuestions, setQuizQuestions] = useState([emptyQuestion()])
   const [quizStep, setQuizStep] = useState(1)
 
@@ -188,7 +188,7 @@ export function CourseManagement() {
         questions_count: questionsCount,
         due_date: newQuiz.due_date || new Date().toISOString(),
         max_attempts: newQuiz.max_attempts || 1,
-        is_published: false
+        is_published: newQuiz.is_published
       }
 
       const questions = newQuiz.type === 'online'
@@ -204,7 +204,7 @@ export function CourseManagement() {
       await professorService.createQuiz(quizData, questions)
 
       setShowAddQuiz(false)
-      setNewQuiz({ title: '', type: 'online', duration: 20, points: 50, due_date: '', max_attempts: 1 })
+      setNewQuiz({ title: '', type: 'online', duration: 20, points: 50, due_date: '', max_attempts: 1, is_published: true })
       setQuizQuestions([emptyQuestion()])
       setQuizStep(1)
       showToast('تم إنشاء الاختبار بنجاح', 'success')
@@ -717,6 +717,21 @@ export function CourseManagement() {
                       value={newQuiz.due_date}
                       onChange={(e) => setNewQuiz({ ...newQuiz, due_date: e.target.value })}
                     />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newQuiz.is_published}
+                        onChange={(e) => setNewQuiz({ ...newQuiz, is_published: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-gray-500 peer-checked:bg-primary-600"></div>
+                    </label>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {newQuiz.is_published ? 'نشر الاختبار مباشرة' : 'حفظ كمسودة'}
+                    </span>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
