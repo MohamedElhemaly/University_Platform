@@ -89,6 +89,47 @@ export function LectureDetail() {
     return content || 'لا يوجد محتوى نصي متاح.'
   }
 
+  const generateTextWithHuggingFace = async (prompt) => {
+    const apiKey = import.meta.env.VITE_HF_API_KEY
+    const model = import.meta.env.VITE_HF_MODEL || 'tiiuae/falcon-7b-instruct'
+    if (!apiKey) {
+      throw new Error('Hugging Face API key is missing')
+    }
+
+    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 512,
+          temperature: 0.7,
+          top_p: 0.9
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(errorText || response.statusText)
+    }
+
+    const data = await response.json()
+    if (Array.isArray(data) && data[0]?.generated_text) {
+      return data[0].generated_text
+    }
+    if (data.generated_text) {
+      return data.generated_text
+    }
+    if (typeof data === 'string') {
+      return data
+    }
+    throw new Error('Unexpected Hugging Face response')
+  }
+
   useEffect(() => {
     if (user?.id && lectureId) {
       loadLectureDetail()
@@ -252,14 +293,44 @@ Do you want more details on a specific point, or have other questions?`
     } else if (lowerMessage.includes('مساعدة') || lowerMessage.includes('help')) {
       response = 'بالتأكيد! يمكنني مساعدتك في فهم المحاضرة، الإجابة على أسئلة، أو تقديم نصائح للدراسة. ما الذي تحتاجه تحديداً؟'
     } else {
-      // General fallback for unmatched questions - try to be more intelligent
-      if (lowerMessage.includes('?') || lowerMessage.includes('؟')) {
-        response = 'سؤال ممتاز! دعني أفكر في الإجابة بناءً على محتوى المحاضرة. يمكنني شرح المفاهيم، تقديم أمثلة، أو مساعدتك في فهم النقاط المعقدة. هل يمكنك توضيح المزيد؟'
-      } else if (lowerMessage.length > 50) {
-        response = 'رسالتك مفصلة! بناءً على ما ذكرته، يبدو أنك مهتم بمواضيع المحاضرة. يمكنني مساعدتك في تحليل هذه النقاط أو تقديم معلومات إضافية. ما الجزء الذي تريد التركيز عليه؟'
-      } else {
-        response = 'أفهم ما تقصده. المحاضرة تغطي مواضيع مهمة في HCI. إذا كان لديك سؤال محدد أو تحتاج شرحاً، قل "اشرح المحاضرة" أو اسأل مباشرة.'
+      // Try AI API for general questions
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'جاري التفكير في إجابتك...' }]);
+      
+      // Lecture context for AI
+      const lectureContext = `معلومات المحاضرة:
+العنوان: ${lecture.title}
+المادة: ${materialName}
+التاريخ: ${lecture.date ? formatDate(lecture.date) : 'غير محدد'}
+المدة: ${lecture.duration || 'غير محدد'} دقيقة
+عدد المواد المرفقة: ${lectureMaterials.length}
+أسماء المواد: ${lectureMaterials.map(m => m.name).join(', ') || 'لا توجد مواد'}
+عدد الأسئلة: ${lectureQuestions.length}
+عدد الاختبارات: ${lectureQuizzes.length}`
+
+      // Format history for Gemini API, skipping the initial greeting
+      const formattedHistory = [
+        { role: 'user', parts: [{ text: lectureContext }] },
+        { role: 'model', parts: [{ text: 'فهمت معلومات المحاضرة. سأساعد الطالب الآن.' }] },
+        ...newMessages
+          .filter((msg, index) => !(index === 0 && msg.role === 'assistant'))
+          .map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+          }))
+      ];
+
+      try {
+        const prompt = `${lectureContext}\n\nUser: ${userMessage}\nAssistant:`
+        const textResponse = await generateTextWithHuggingFace(prompt)
+        setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: textResponse }])
+      } catch (error) {
+        console.error('Error with AI:', error)
+        const fallbackResponse = lowerMessage.includes('?') || lowerMessage.includes('؟') 
+          ? 'سؤال ممتاز! دعني أفكر في الإجابة بناءً على محتوى المحاضرة. يمكنني شرح المفاهيم، تقديم أمثلة، أو مساعدتك في فهم النقاط المعقدة. هل يمكنك توضيح المزيد؟'
+          : 'أفهم ما تقصده. المحاضرة تغطي مواضيع مهمة في HCI. إذا كان لديك سؤال محدد أو تحتاج شرحاً، قل "اشرح المحاضرة" أو اسأل مباشرة.'
+        setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: fallbackResponse }])
       }
+      return;
     }
 
     // If we have a keyword-based response, use it
