@@ -363,12 +363,18 @@ export const studentService = {
     if (error) throw error
 
     // Get AI chat history
-    const { data: chatHistory } = await supabase
-      .from('ai_chat_history')
-      .select('messages')
-      .eq('student_id', studentId)
-      .eq('lecture_id', lectureId)
-      .single()
+    let chatHistory = null;
+    try {
+      const { data } = await supabase
+        .from('ai_chat_history')
+        .select('messages')
+        .eq('student_id', studentId)
+        .eq('lecture_id', lectureId)
+        .single()
+      chatHistory = data;
+    } catch (error) {
+      console.warn('AI chat history not available:', error.message);
+    }
 
     return {
       ...data,
@@ -1836,11 +1842,21 @@ export const adminService = {
 
     const { data, error } = await supabase
       .from('student_materials')
-      .insert(enrollments)
+      .upsert(enrollments, { onConflict: 'material_id,student_id' })
       .select()
 
     if (error) throw error
     return data
+  },
+
+  async unenrollStudent(materialId, studentId) {
+    const { error } = await supabase
+      .from('student_materials')
+      .delete()
+      .eq('material_id', materialId)
+      .eq('student_id', studentId)
+
+    if (error) throw error
   },
 
   // ---- ACTIVITIES ----

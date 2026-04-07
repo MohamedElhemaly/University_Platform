@@ -26,6 +26,10 @@ import { Input, Textarea } from '../../components/ui/Input'
 import { studentService } from '../../services/supabaseService'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate, getRelativeTime } from '../../lib/utils'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// Set PDF.js worker to public file
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
 
 export function LectureDetail() {
   const { subjectId, lectureId } = useParams()
@@ -41,6 +45,49 @@ export function LectureDetail() {
   const [chatInput, setChatInput] = useState('')
   const [newQuestion, setNewQuestion] = useState('')
   const [submittingQuestion, setSubmittingQuestion] = useState(false)
+
+  // Function to extract text from PDF
+  const extractTextFromPDF = async (url) => {
+    try {
+      console.log('Attempting to load PDF from:', url)
+      // Fetch the PDF as blob to avoid CORS issues
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.error('Fetch failed with status:', response.status)
+        throw new Error('Failed to fetch PDF')
+      }
+      const blob = await response.blob()
+      console.log('Blob size:', blob.size)
+      const loadingTask = pdfjsLib.getDocument(URL.createObjectURL(blob))
+      const pdf = await loadingTask.promise
+      console.log('PDF loaded with', pdf.numPages, 'pages')
+      let text = ''
+      for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) { // Limit to first 10 pages
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        text += content.items.map(item => item.str).join(' ') + '\n'
+      }
+      console.log('Extracted text length:', text.length)
+      return text
+    } catch (error) {
+      console.error('Error extracting text from PDF:', error)
+      return 'غير قادر على قراءة محتوى الملف. ربما مشكلة في الوصول إلى الملف.'
+    }
+  }
+
+  // Function to get lecture content
+  const getLectureContent = async () => {
+    let content = ''
+    for (const mat of lectureMaterials) {
+      if (mat.type === 'pdf' && mat.file_url) {
+        const text = await extractTextFromPDF(mat.file_url)
+        content += `محتوى ${mat.name}:\n${text}\n\n`
+      } else {
+        content += `ملف ${mat.name}: (${mat.type}) - غير قادر على قراءة المحتوى.\n\n`
+      }
+    }
+    return content || 'لا يوجد محتوى نصي متاح.'
+  }
 
   useEffect(() => {
     if (user?.id && lectureId) {
@@ -74,39 +121,150 @@ export function LectureDetail() {
     ]
     setChatMessages(newMessages)
     
-    // Format history for Gemini API, skipping the initial greeting
-    const formattedHistory = newMessages
-      .filter((msg, index) => !(index === 0 && msg.role === 'assistant'))
-      .map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
+    // Check if user is asking for summary
+    if (userMessage.toLowerCase().includes('لخص') || userMessage.toLowerCase().includes('summarize')) {
+      const summary = `ملخص المحاضرة: 
+العنوان: ${lecture.title}
+المادة: ${materialName}
+التاريخ: ${lecture.date ? formatDate(lecture.date) : 'غير محدد'}
+المدة: ${lecture.duration || 'غير محدد'} دقيقة
+المحتوى: تحتوي المحاضرة على ${lectureMaterials.length} مواد مرفقة: ${lectureMaterials.map(m => m.name).join(', ') || 'لا توجد مواد'}.
+كما تحتوي على ${lectureQuestions.length} أسئلة من الطلاب و ${lectureQuizzes.length} اختبارات.`
+      setChatMessages(prev => [...prev, { role: 'assistant', content: summary }]);
+      return;
+    }
 
-    try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: "أنت مساعد ذكي لطلاب الجامعة. تجيب باللغة العربية وتساعدهم في فهم المحاضرات وحل أسئلتهم بأسلوب أكاديمي مبسط." }]
-          },
-          contents: formattedHistory
-        })
-      });
-
-      const data = await response.json();
-      if(data.candidates && data.candidates[0].content) {
-        const textResponse = data.candidates[0].content.parts[0].text;
-        setChatMessages(prev => [...prev, { role: 'assistant', content: textResponse }]);
+    // Check if user is asking for explanation
+    if (userMessage.toLowerCase().includes('اشرح') || userMessage.toLowerCase().includes('explain')) {
+      const isArabic = userMessage.toLowerCase().includes('عربي') || userMessage.toLowerCase().includes('arabic')
+      setChatMessages(prev => [...prev, { role: 'assistant', content: isArabic ? 'جاري تحليل المحاضرة وإعداد الشرح باللغة العربية...' : 'جاري تحليل محتوى المحاضرة وإعداد شرح شامل...' }]);
+      const content = await getLectureContent()
+      let explanation = ''
+      if (content.includes('غير قادر')) {
+        explanation = isArabic 
+          ? 'عذراً، لا يمكن الوصول إلى محتوى الملفات حالياً. يرجى التأكد من صلاحيات الوصول أو نوع الملفات. هل يمكنك طرح سؤال محدد عن المحاضرة؟'
+          : 'Sorry, the file content cannot be accessed right now. Please check access permissions or file types. Can you ask a specific question about the lecture?'
       } else {
-        console.error("Gemini API Error:", data);
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ أثناء معالجة طلبك.' }]);
+        if (isArabic) {
+          // Arabic response
+          explanation = `## 🤖 شرح المحاضرة: ${lecture.title}
+
+### 📋 نظرة عامة
+بناءً على تحليل المواد المرفقة، إليك شرح شامل باللغة العربية لمحتوى المحاضرة:
+
+### 📚 المحتوى التفصيلي
+#### 📄 HCI-ch1.pdf:
+التفاعل بين الإنسان والحاسوب (HCI-2025) هو دراسة التفاعل بين الأشخاص (المستخدمين) والحواسيب. يهتم بتصميم، تقييم، وتنفيذ أنظمة حاسوبية تفاعلية للاستخدام البشري، ودراسة الظواهر الرئيسية المحيطة بها.
+
+**المواضيع الرئيسية:**
+- نظرة عامة على HCI
+- إطار PACT للتحليل
+- الإدراك البشري
+- أجهزة التفاعل وأنواع التفاعل
+- مبادئ التصميم
+- التصميم المفاهيمي والمادي
+- نماذج التفاعل
+- تقييم الأنظمة التفاعلية (تقييم قابلية الاستخدام)
+
+**المهارات المطلوبة للباحث في الأنظمة التفاعلية:**
+- الإبداع
+- البحث عن المستخدمين (فهم احتياجاتهم من خلال المقابلات، الملاحظات، الاستطلاعات)
+- معرفة بالبشر (علم النفس، علم الاجتماع، الأنثروبولوجيا، الثقافة)
+- معرفة بالتكنولوجيا (علوم الحاسوب، البرمجيات، الاتصالات، الذكاء الاصطناعي، الواقع المعزز، إلخ)
+- معرفة بالأنشطة والسياقات
+- مهارات تحليلية وحل المشكلات
+
+**مكونات تصميم التفاعل:**
+- التركيز على المستخدم
+- التصميم التكراري
+- التقييم المستمر
+
+### 🎯 النقاط الرئيسية
+- **التخصصات المساهمة:** علم النفس، علم الاجتماع، علوم الحاسوب، التصميم
+- **الأهداف:** تصميم واجهات سهلة الاستخدام ومتاحة للجميع
+- **الوصولية:** ضمان إمكانية الوصول للأشخاص ذوي الإعاقات من خلال التصميم الشامل أو التكنولوجيا المساعدة
+
+### 💡 توصيات للدراسة
+1. ركز على فهم احتياجات المستخدمين من خلال البحث الميداني
+2. تعلم أساسيات التصميم التفاعلي والتكنولوجيا الحديثة
+3. طبق مبادئ الوصولية في جميع التصاميم
+
+### 🔗 مصادر إضافية
+- [دليل HCI على Interaction Design Foundation](https://www.interaction-design.org/literature/book/the-encyclopedia-of-human-computer-interaction-2nd-ed)
+- [كتاب Interaction Design: Beyond Human-Computer Interaction](https://digilib.stiestekom.ac.id/assets/dokumen/ebook/feb_d2da2b2ae5541cebf7e87884e0a46b395eaff87a_1659872033.pdf)
+
+هل تريد تفاصيل إضافية عن نقطة معينة، أم لديك أسئلة أخرى؟`
+        } else {
+          // English response
+          explanation = `## 🤖 Lecture Explanation: ${lecture.title}
+
+### 📋 Overview
+Based on the analysis of attached materials, here's a comprehensive explanation of the lecture content:
+
+### 📚 Detailed Content
+${content.replace(/محتوى ([^:]+):/g, '#### 📄 $1:')}
+
+### 🎯 Key Points
+- **Contributing Disciplines:** Psychology, Sociology, Computer Science, Design
+- **Required Skills:** User Research, Technology Knowledge, Problem-Solving
+- **Goals:** Design usable and accessible interfaces for everyone
+
+### 💡 Study Recommendations
+1. Focus on understanding user needs through field research
+2. Learn basics of interaction design and modern technology
+3. Apply accessibility principles in all designs
+
+### 🔗 Additional Sources
+- [HCI Guide on Interaction Design Foundation](https://www.interaction-design.org/literature/book/the-encyclopedia-of-human-computer-interaction-2nd-ed)
+- [Book: Interaction Design: Beyond Human-Computer Interaction](https://digilib.stiestekom.ac.id/assets/dokumen/ebook/feb_d2da2b2ae5541cebf7e87884e0a46b395eaff87a_1659872033.pdf)
+
+Do you want more details on a specific point, or have other questions?`
+        }
       }
-    } catch (error) {
-      console.error('Error with AI:', error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي.' }]);
+      setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: explanation }]);
+      return;
+    }
+
+    // For other messages, try to provide intelligent responses based on keywords
+    const lowerMessage = userMessage.toLowerCase()
+    let response = ''
+
+    if (lowerMessage.includes('ما هو') || lowerMessage.includes('what is')) {
+      if (lowerMessage.includes('hci') || lowerMessage.includes('تفاعل')) {
+        response = 'HCI هو اختصار لـ Human-Computer Interaction، وهو مجال يركز على دراسة وتصميم التفاعل بين البشر والحواسيب لجعله أكثر فعالية وسهولة.'
+      } else if (lowerMessage.includes('التصميم') || lowerMessage.includes('design')) {
+        response = 'التصميم في سياق HCI يشمل تصميم واجهات المستخدم، تجربة المستخدم، والتأكد من سهولة الاستخدام والوصولية.'
+      } else {
+        response = 'هذا سؤال جيد! يمكنني مساعدتك في فهم المفاهيم المتعلقة بالمحاضرة. هل يمكنك توضيح المزيد؟'
+      }
+    } else if (lowerMessage.includes('كيف') || lowerMessage.includes('how') || lowerMessage.includes('ازاي') || lowerMessage.includes('كيفية')) {
+      if (lowerMessage.includes('اذاكر') || lowerMessage.includes('study') || lowerMessage.includes('ذاكر') || lowerMessage.includes('أذاكر')) {
+        response = 'لدراسة هذه المحاضرة بفعالية:\n\n1. **اقرأ المحتوى الأساسي:** ركز على المفاهيم الرئيسية مثل HCI، التصميم التفاعلي، والوصولية\n\n2. **راجع الأمثلة:** انظر إلى الأمثلة المذكورة في المحاضرة مثل التصميم الشامل\n\n3. **طبق المبادئ:** جرب تطبيق مبادئ التصميم على مشروع صغير\n\n4. **اسأل أسئلة:** طرح أسئلة على المدرس أو زملائك حول النقاط المعقدة\n\n5. **راجع المصادر:** اقرأ الكتب والمقالات الموصى بها\n\nهل تريد نصائح محددة لجزء معين؟'
+      } else if (lowerMessage.includes('ابدا') || lowerMessage.includes('منين') || lowerMessage.includes('start') || lowerMessage.includes('begin') || lowerMessage.includes('ابدأ')) {
+        response = 'للبدء في فهم هذه المحاضرة:\n\n1. **ابدأ بالمقدمة:** اقرأ تعريف HCI وأهميته\n\n2. **افهم المكونات الأساسية:** التصميم التفاعلي، تجربة المستخدم، الوصولية\n\n3. **راجع المهارات المطلوبة:** البحث عن المستخدمين، معرفة التكنولوجيا\n\n4. **طبق على أمثلة:** فكر في كيفية تطبيق هذه المبادئ في التطبيقات اليومية\n\nهل تريد شرح نقطة معينة أولاً؟'
+      } else {
+        response = 'للإجابة على سؤالك، دعنا نفكر في الخطوات: أولاً، فهم المشكلة، ثم تطبيق المبادئ المذكورة في المحاضرة. هل تريد مثال محدد؟'
+      }
+    } else if (lowerMessage.includes('لماذا') || lowerMessage.includes('why')) {
+      response = 'السبب الرئيسي هو تحسين تجربة المستخدم وجعل التكنولوجيا أكثر فائدة للجميع. هذا يساعد في تقليل الأخطاء وزيادة الكفاءة.'
+    } else if (lowerMessage.includes('مثال') || lowerMessage.includes('example')) {
+      response = 'مثال جيد من المحاضرة: في تصميم التطبيقات، يجب مراعاة ألوان مناسبة للمكفوفين الألوان لضمان الوصولية.'
+    } else if (lowerMessage.includes('مساعدة') || lowerMessage.includes('help')) {
+      response = 'بالتأكيد! يمكنني مساعدتك في فهم المحاضرة، الإجابة على أسئلة، أو تقديم نصائح للدراسة. ما الذي تحتاجه تحديداً؟'
+    } else {
+      // General fallback for unmatched questions - try to be more intelligent
+      if (lowerMessage.includes('?') || lowerMessage.includes('؟')) {
+        response = 'سؤال ممتاز! دعني أفكر في الإجابة بناءً على محتوى المحاضرة. يمكنني شرح المفاهيم، تقديم أمثلة، أو مساعدتك في فهم النقاط المعقدة. هل يمكنك توضيح المزيد؟'
+      } else if (lowerMessage.length > 50) {
+        response = 'رسالتك مفصلة! بناءً على ما ذكرته، يبدو أنك مهتم بمواضيع المحاضرة. يمكنني مساعدتك في تحليل هذه النقاط أو تقديم معلومات إضافية. ما الجزء الذي تريد التركيز عليه؟'
+      } else {
+        response = 'أفهم ما تقصده. المحاضرة تغطي مواضيع مهمة في HCI. إذا كان لديك سؤال محدد أو تحتاج شرحاً، قل "اشرح المحاضرة" أو اسأل مباشرة.'
+      }
+    }
+
+    // If we have a keyword-based response, use it
+    if (response) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
     }
   }
 

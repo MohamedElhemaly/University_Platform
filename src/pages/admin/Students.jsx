@@ -140,7 +140,10 @@ export function AdminStudents() {
 
   const handleAssignMaterials = (studentId) => {
     const student = students.find(s => s.id === studentId)
-    setSelectedStudent({ ...student, assignedMaterials: [] })
+    setSelectedStudent({ 
+      ...student, 
+      assignedMaterials: student.student_materials?.map(sm => sm.material_id) || []
+    })
     setShowAssignModal(true)
   }
 
@@ -157,17 +160,30 @@ export function AdminStudents() {
   const handleSaveAssignments = async () => {
     try {
       setSaving(true)
-      if (selectedStudent.assignedMaterials.length > 0) {
-        await adminService.enrollStudents(
-          selectedStudent.assignedMaterials[0],
-          [selectedStudent.id]
-        )
+      const currentMaterials = selectedStudent.student_materials?.map(sm => sm.material_id) || []
+      const newMaterials = selectedStudent.assignedMaterials
+
+      // Materials to add
+      const materialsToAdd = newMaterials.filter(id => !currentMaterials.includes(id))
+      // Materials to remove
+      const materialsToRemove = currentMaterials.filter(id => !newMaterials.includes(id))
+
+      // Add new enrollments
+      for (const materialId of materialsToAdd) {
+        await adminService.enrollStudents(materialId, [selectedStudent.id])
       }
+
+      // Remove old enrollments
+      for (const materialId of materialsToRemove) {
+        await adminService.unenrollStudent(materialId, selectedStudent.id)
+      }
+
       await loadData()
       setShowAssignModal(false)
       setSelectedStudent(null)
     } catch (error) {
       console.error('Error saving assignments:', error)
+      alert('حدث خطأ أثناء حفظ التعيينات: ' + error.message)
     } finally {
       setSaving(false)
     }
