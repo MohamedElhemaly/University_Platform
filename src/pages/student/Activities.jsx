@@ -184,6 +184,8 @@ export function StudentActivities() {
     try {
       setDeleting(true)
       await studentService.deleteActivity(activityId)
+      setMyActivities((current) => current.filter((activity) => activity.id !== activityId))
+      setActivities((current) => current.filter((activity) => activity.id !== activityId))
       setDeleteConfirm(null)
       await loadActivities()
     } catch (error) {

@@ -202,6 +202,8 @@ export function AdminActivities() {
     try {
       setDeleting(true)
       await adminService.deleteActivity(activityId)
+      setPending((current) => current.filter((activity) => activity.id !== activityId))
+      setApproved((current) => current.filter((activity) => activity.id !== activityId))
       setDeleteConfirm(null)
       await loadData()
     } catch (error) {

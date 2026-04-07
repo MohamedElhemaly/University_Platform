@@ -1,5 +1,59 @@
 import { supabase, auth, db, storage } from '../lib/supabase'
 
+const ACTIVITY_IMAGES_BUCKET = 'lecture-materials'
+const ACTIVITY_IMAGES_PREFIX = 'activities/'
+
+const sanitizeFileName = (fileName = 'image') => {
+  return fileName
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+}
+
+const extractActivityImagePath = (value) => {
+  if (!value || typeof value !== 'string') return null
+  if (value.startsWith('blob:')) return value
+  if (value.startsWith(ACTIVITY_IMAGES_PREFIX)) return value
+
+  try {
+    const url = new URL(value)
+    const marker = `/${ACTIVITY_IMAGES_BUCKET}/`
+    const bucketIndex = url.pathname.indexOf(marker)
+
+    if (bucketIndex === -1) return value
+
+    return decodeURIComponent(url.pathname.slice(bucketIndex + marker.length))
+  } catch {
+    return value
+  }
+}
+
+const resolveActivityImageUrl = async (value) => {
+  const imagePath = extractActivityImagePath(value)
+  if (!imagePath || imagePath.startsWith('blob:')) return imagePath
+  if (!imagePath.startsWith(ACTIVITY_IMAGES_PREFIX)) return imagePath
+
+  const { data, error } = await supabase.storage
+    .from(ACTIVITY_IMAGES_BUCKET)
+    .createSignedUrl(imagePath, 60 * 60 * 24 * 30)
+
+  if (error) {
+    console.error('Error creating signed URL for activity image:', error)
+    return null
+  }
+
+  return data?.signedUrl || null
+}
+
+const withResolvedActivityImage = async (activity) => {
+  if (!activity) return activity
+
+  return {
+    ...activity,
+    image_url: await resolveActivityImageUrl(activity.image_url)
+  }
+}
+
 // ============================================
 // AUTH SERVICE
 // ============================================
@@ -619,7 +673,7 @@ export const studentService = {
       .order('date', { ascending: true })
 
     if (error) throw error
-    return data || []
+    return Promise.all((data || []).map(withResolvedActivityImage))
   },
 
   // Submit activity
@@ -642,21 +696,20 @@ export const studentService = {
     if (!file) return null
     
     try {
-      const fileName = `activities/${Date.now()}_${file.name}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('lecture-materials')
-        .upload(fileName, file)
+      const fileName = `${ACTIVITY_IMAGES_PREFIX}${Date.now()}_${sanitizeFileName(file.name)}`
+      const { error: uploadError } = await supabase.storage
+        .from(ACTIVITY_IMAGES_BUCKET)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
       if (uploadError) {
         console.error('Supabase upload error:', uploadError)
         return null
       }
 
-      const { data } = supabase.storage
-        .from('lecture-materials')
-        .getPublicUrl(fileName)
-
-      return data?.publicUrl || null
+      return fileName
     } catch (error) {
       console.error('Error uploading activity image:', error)
       return null
@@ -664,12 +717,30 @@ export const studentService = {
   },
 
   async deleteActivity(activityId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('activities')
       .delete()
       .eq('id', activityId)
+      .select('id, image_url')
+      .maybeSingle()
 
     if (error) throw error
+
+    if (!data) {
+      throw new Error('لم يتم حذف النشاط من قاعدة البيانات')
+    }
+
+    const imagePath = extractActivityImagePath(data.image_url)
+    if (imagePath?.startsWith(ACTIVITY_IMAGES_PREFIX)) {
+      const { error: storageError } = await supabase.storage
+        .from(ACTIVITY_IMAGES_BUCKET)
+        .remove([imagePath])
+
+      if (storageError) {
+        console.error('Error removing activity image from storage:', storageError)
+      }
+    }
+
     return true
   },
 
@@ -829,7 +900,7 @@ export const studentService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    return Promise.all((data || []).map(withResolvedActivityImage))
   },
 
   // Get study resources (lecture materials from enrolled courses)
@@ -1930,7 +2001,7 @@ export const adminService = {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
-    return data || []
+    return Promise.all((data || []).map(withResolvedActivityImage))
   },
 
   async approveActivity(activityId, adminId) {
@@ -1991,21 +2062,20 @@ export const adminService = {
     if (!file) return null
     
     try {
-      const fileName = `activities/${Date.now()}_${file.name}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('lecture-materials')
-        .upload(fileName, file)
+      const fileName = `${ACTIVITY_IMAGES_PREFIX}${Date.now()}_${sanitizeFileName(file.name)}`
+      const { error: uploadError } = await supabase.storage
+        .from(ACTIVITY_IMAGES_BUCKET)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
       if (uploadError) {
         console.error('Supabase upload error:', uploadError)
         return null
       }
 
-      const { data } = supabase.storage
-        .from('lecture-materials')
-        .getPublicUrl(fileName)
-
-      return data?.publicUrl || null
+      return fileName
     } catch (error) {
       console.error('Error uploading activity image:', error)
       return null
@@ -2033,12 +2103,30 @@ export const adminService = {
   },
 
   async deleteActivity(activityId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('activities')
       .delete()
       .eq('id', activityId)
+      .select('id, image_url')
+      .maybeSingle()
 
     if (error) throw error
+
+    if (!data) {
+      throw new Error('لم يتم حذف النشاط من قاعدة البيانات')
+    }
+
+    const imagePath = extractActivityImagePath(data.image_url)
+    if (imagePath?.startsWith(ACTIVITY_IMAGES_PREFIX)) {
+      const { error: storageError } = await supabase.storage
+        .from(ACTIVITY_IMAGES_BUCKET)
+        .remove([imagePath])
+
+      if (storageError) {
+        console.error('Error removing activity image from storage:', storageError)
+      }
+    }
+
     return true
   },
 
