@@ -89,14 +89,10 @@ export function LectureDetail() {
     return content || 'لا يوجد محتوى نصي متاح.'
   }
 
-  const hfApiKey = import.meta.env.VITE_HF_API_KEY
+  const hfApiKey = import.meta.env.VITE_HF_API_KEY || 'YOUR_HF_API_KEY'
   const hfModel = import.meta.env.VITE_HF_MODEL || 'tiiuae/falcon-7b-instruct'
 
   const generateTextWithHuggingFace = async (prompt) => {
-    if (!hfApiKey) {
-      throw new Error('Hugging Face API key is missing. Please set VITE_HF_API_KEY in your deployment environment.')
-    }
-
     const response = await fetch(`https://api-inference.huggingface.co/models/${hfModel}`, {
       method: 'POST',
       headers: {
