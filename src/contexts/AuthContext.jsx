@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, auth } from '../lib/supabase'
 import { authService, studentService, professorService } from '../services/supabaseService'
 
 const AuthContext = createContext(null)
@@ -15,8 +15,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession()
+        // Check for existing session using the safe auth wrapper
+        const session = await auth.getSession()
         
         if (session?.user) {
           // Get user profile
@@ -49,8 +49,8 @@ export function AuthProvider({ children }) {
 
     initAuth()
 
-    // Listen to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen to auth changes using the safe auth wrapper
+    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setUserType(null)

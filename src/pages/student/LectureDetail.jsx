@@ -63,15 +63,51 @@ export function LectureDetail() {
     }
   }
 
-  const handleSendChat = () => {
+  const handleSendChat = async () => {
     if (!chatInput.trim()) return
-    
-    setChatMessages([
-      ...chatMessages,
-      { role: 'user', content: chatInput },
-      { role: 'assistant', content: 'هذه الميزة قيد التطوير. سيتم ربطها بنموذج ذكاء اصطناعي قريباً.' },
-    ])
+    const userMessage = chatInput.trim()
     setChatInput('')
+    
+    const newMessages = [
+      ...chatMessages,
+      { role: 'user', content: userMessage }
+    ]
+    setChatMessages(newMessages)
+    
+    // Format history for Gemini API, skipping the initial greeting
+    const formattedHistory = newMessages
+      .filter((msg, index) => !(index === 0 && msg.role === 'assistant'))
+      .map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
+
+    try {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: "أنت مساعد ذكي لطلاب الجامعة. تجيب باللغة العربية وتساعدهم في فهم المحاضرات وحل أسئلتهم بأسلوب أكاديمي مبسط." }]
+          },
+          contents: formattedHistory
+        })
+      });
+
+      const data = await response.json();
+      if(data.candidates && data.candidates[0].content) {
+        const textResponse = data.candidates[0].content.parts[0].text;
+        setChatMessages(prev => [...prev, { role: 'assistant', content: textResponse }]);
+      } else {
+        console.error("Gemini API Error:", data);
+        setChatMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ أثناء معالجة طلبك.' }]);
+      }
+    } catch (error) {
+      console.error('Error with AI:', error);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي.' }]);
+    }
   }
 
   const handleAskQuestion = async () => {

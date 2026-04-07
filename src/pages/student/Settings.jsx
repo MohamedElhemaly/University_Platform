@@ -367,9 +367,18 @@ export function StudentSettings() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">اللغة</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اللغة</label>
                   <Select value="ar" disabled>
                     <option value="ar">العربية</option>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">المظهر</label>
+                  <Select value={theme} onChange={(e) => setTheme(e.target.value)}>
+                    <option value="light">فاتح</option>
+                    <option value="dark">داكن</option>
+                    <option value="auto">تلقائي</option>
                   </Select>
                 </div>
 
