@@ -89,17 +89,14 @@ export function LectureDetail() {
     return content || 'لا يوجد محتوى نصي متاح.'
   }
 
-  const generateTextWithHuggingFace = async (prompt) => {
-    const apiKey = import.meta.env.VITE_HF_API_KEY
-    const model = import.meta.env.VITE_HF_MODEL || 'tiiuae/falcon-7b-instruct'
-    if (!apiKey) {
-      throw new Error('Hugging Face API key is missing')
-    }
+  const hfApiKey = import.meta.env.VITE_HF_API_KEY || 'YOUR_HF_API_KEY'
+  const hfModel = import.meta.env.VITE_HF_MODEL || 'tiiuae/falcon-7b-instruct'
 
-    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+  const generateTextWithHuggingFace = async (prompt) => {
+    const response = await fetch(`https://api-inference.huggingface.co/models/${hfModel}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${hfApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -325,15 +322,18 @@ Do you want more details on a specific point, or have other questions?`
         setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: textResponse }])
       } catch (error) {
         console.error('Error with AI:', error)
-        const fallbackResponse = lowerMessage.includes('?') || lowerMessage.includes('؟') 
-          ? 'سؤال ممتاز! دعني أفكر في الإجابة بناءً على محتوى المحاضرة. يمكنني شرح المفاهيم، تقديم أمثلة، أو مساعدتك في فهم النقاط المعقدة. هل يمكنك توضيح المزيد؟'
-          : 'أفهم ما تقصده. المحاضرة تغطي مواضيع مهمة في HCI. إذا كان لديك سؤال محدد أو تحتاج شرحاً، قل "اشرح المحاضرة" أو اسأل مباشرة.'
+        const errorMessage = error?.message || ''
+        const fallbackResponse = errorMessage.includes('Hugging Face API key is missing')
+          ? 'المفتاح غير موجود. أضف VITE_HF_API_KEY إلى إعدادات البيئة في منصة النشر.'
+          : lowerMessage.includes('?') || lowerMessage.includes('؟')
+            ? 'سؤال ممتاز! دعني أفكر في الإجابة بناءً على محتوى المحاضرة. يمكنني شرح المفاهيم، تقديم أمثلة، أو مساعدتك في فهم النقاط المعقدة. هل يمكنك توضيح المزيد؟'
+            : 'أفهم ما تقصده. المحاضرة تغطي مواضيع مهمة في HCI. إذا كان لديك سؤال محدد أو تحتاج شرحاً، قل "اشرح المحاضرة" أو اسأل مباشرة.'
         setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: fallbackResponse }])
       }
       return;
     }
 
-    // If we have a keyword-based response, use it
+    // If we have a keyword-based response, use it,
     if (response) {
       setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
     }
