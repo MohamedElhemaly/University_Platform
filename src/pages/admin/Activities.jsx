@@ -15,6 +15,7 @@ import {
   Loader2,
   Edit3,
   Link2,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -36,6 +37,8 @@ export function AdminActivities() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [editActivity, setEditActivity] = useState(null)
   const [newActivity, setNewActivity] = useState({
@@ -46,11 +49,88 @@ export function AdminActivities() {
     time: '',
     location: '',
     link: '',
+    imageFile: null,
+    imagePreview: null,
     showAsBanner: false,
     targetCollege: '',
     targetYear: '',
     targetSemester: '',
   })
+
+  const revokeActivityPreview = (previewUrl) => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }
+
+  const resetNewActivity = () => {
+    revokeActivityPreview(newActivity.imagePreview)
+    setNewActivity({
+      title: '',
+      description: '',
+      category: 'event',
+      date: '',
+      time: '',
+      location: '',
+      link: '',
+      imageFile: null,
+      imagePreview: null,
+      showAsBanner: false,
+      targetCollege: '',
+      targetYear: '',
+      targetSemester: '',
+    })
+  }
+
+  const handleNewActivityImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    revokeActivityPreview(newActivity.imagePreview)
+    const previewUrl = URL.createObjectURL(file)
+    e.target.value = ''
+
+    setNewActivity({
+      ...newActivity,
+      imageFile: file,
+      imagePreview: previewUrl,
+    })
+  }
+
+  const handleRemoveNewActivityImage = () => {
+    revokeActivityPreview(newActivity.imagePreview)
+    setNewActivity({
+      ...newActivity,
+      imageFile: null,
+      imagePreview: null,
+    })
+  }
+
+  const handleEditActivityImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    revokeActivityPreview(editActivity?.imagePreview)
+    const previewUrl = URL.createObjectURL(file)
+    e.target.value = ''
+
+    setEditActivity({
+      ...editActivity,
+      imageFile: file,
+      imagePreview: previewUrl,
+      imageUrl: null,
+    })
+  }
+
+  const handleRemoveEditActivityImage = () => {
+    revokeActivityPreview(editActivity?.imagePreview)
+    setEditActivity({
+      ...editActivity,
+      imageFile: null,
+      imagePreview: null,
+      imageUrl: null,
+    })
+  }
 
   useEffect(() => {
     loadData()
@@ -118,6 +198,20 @@ export function AdminActivities() {
     }
   }
 
+  const handleDeleteActivity = async (activityId) => {
+    try {
+      setDeleting(true)
+      await adminService.deleteActivity(activityId)
+      setDeleteConfirm(null)
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting activity:', error)
+      alert('حدث خطأ أثناء حذف النشاط: ' + (error.message || 'خطأ غير معروف'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const handleViewDetail = (activity) => {
     setSelectedActivity(activity)
     setShowDetailModal(true)
@@ -126,6 +220,10 @@ export function AdminActivities() {
   const handleAddActivity = async () => {
     try {
       setSaving(true)
+      let imageUrl = null
+      if (newActivity.imageFile) {
+        imageUrl = await adminService.uploadActivityImage(newActivity.imageFile)
+      }
       await adminService.createActivity(user?.id, {
         title: newActivity.title,
         description: newActivity.description,
@@ -134,6 +232,7 @@ export function AdminActivities() {
         time: newActivity.time,
         location: newActivity.location,
         link: newActivity.link || null,
+        image_url: imageUrl,
         show_as_banner: newActivity.showAsBanner,
         target_college_id: newActivity.targetCollege ? parseInt(newActivity.targetCollege) : null,
         target_year: newActivity.targetYear ? parseInt(newActivity.targetYear) : null,
@@ -141,19 +240,7 @@ export function AdminActivities() {
       })
       await loadData()
       setShowAddModal(false)
-      setNewActivity({
-        title: '',
-        description: '',
-        category: 'event',
-        date: '',
-        time: '',
-        location: '',
-        link: '',
-        showAsBanner: false,
-        targetCollege: '',
-        targetYear: '',
-        targetSemester: '',
-      })
+      resetNewActivity()
     } catch (error) {
       console.error('Error creating activity:', error)
       alert('حدث خطأ أثناء إنشاء النشاط: ' + error.message)
@@ -172,6 +259,9 @@ export function AdminActivities() {
       time: activity.time || '',
       location: activity.location || '',
       link: activity.link || '',
+      imageUrl: activity.image_url || null,
+      imagePreview: activity.image_url || null,
+      imageFile: null,
       showAsBanner: activity.show_as_banner || false,
       targetCollege: activity.target_college_id || '',
       targetYear: activity.target_year || '',
@@ -185,6 +275,11 @@ export function AdminActivities() {
     
     try {
       setSaving(true)
+      let imageUrl = editActivity.imageUrl || null
+      if (editActivity.imageFile) {
+        imageUrl = await adminService.uploadActivityImage(editActivity.imageFile)
+      }
+
       await adminService.updateActivity(editActivity.id, {
         title: editActivity.title,
         description: editActivity.description,
@@ -193,6 +288,7 @@ export function AdminActivities() {
         time: editActivity.time,
         location: editActivity.location,
         link: editActivity.link || null,
+        image_url: imageUrl,
         show_as_banner: editActivity.showAsBanner,
         target_college_id: editActivity.targetCollege ? parseInt(editActivity.targetCollege) : null,
         target_year: editActivity.targetYear ? parseInt(editActivity.targetYear) : null,
@@ -331,6 +427,15 @@ export function AdminActivities() {
                       <XCircle className="w-4 h-4" />
                       رفض
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteConfirm(activity.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      حذف
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -393,6 +498,14 @@ export function AdminActivities() {
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => handleViewDetail(activity)}>
                     <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setDeleteConfirm(activity.id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -482,6 +595,53 @@ export function AdminActivities() {
                     className="pl-9"
                   />
                   <Link2 className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">صورة النشاط (اختياري)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">يمكنك تغيير الصورة أو حذفها قبل حفظ التعديل.</p>
+                <div className="space-y-3">
+                  <label htmlFor="editActivityImage" className="inline-flex w-full items-center justify-center gap-2 px-4 py-3 border border-dashed rounded-lg cursor-pointer bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <span>اختر صورة جديدة</span>
+                    <input
+                      id="editActivityImage"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleEditActivityImageChange}
+                    />
+                  </label>
+
+                  {editActivity?.imageFile && (
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300">
+                      <span>{editActivity.imageFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveEditActivityImage}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  )}
+
+                  {(editActivity?.imagePreview) && (
+                    <div className="relative w-full h-48 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                      <img
+                        src={editActivity.imagePreview}
+                        alt="معاينة صورة النشاط"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveEditActivityImage}
+                        className="absolute top-2 left-2 rounded-full bg-white/90 text-gray-700 p-1 shadow-sm hover:bg-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -580,6 +740,54 @@ export function AdminActivities() {
                   onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">صورة النشاط (اختياري)</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">اختر صورة للنشاط ثم احفظها. يمكنك تعديلها أو حذفها لاحقاً.</p>
+                <div className="space-y-3">
+                  <label htmlFor="adminActivityImage" className="inline-flex w-full items-center justify-center gap-2 px-4 py-3 border border-dashed rounded-lg cursor-pointer bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <span>اختر صورة</span>
+                    <input
+                      id="adminActivityImage"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleNewActivityImageChange}
+                    />
+                  </label>
+
+                  {newActivity.imageFile && (
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300">
+                      <span>{newActivity.imageFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveNewActivityImage}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  )}
+
+                  {newActivity.imagePreview && (
+                    <div className="relative w-full h-48 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                      <img
+                        src={newActivity.imagePreview}
+                        alt="معاينة صورة النشاط"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveNewActivityImage}
+                        className="absolute top-2 left-2 rounded-full bg-white/90 text-gray-700 p-1 shadow-sm hover:bg-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">نوع النشاط</label>
                 <Select
@@ -794,6 +1002,40 @@ export function AdminActivities() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle>تأكيد الحذف</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6">
+                <p className="text-gray-600 dark:text-gray-400">
+                  هل أنت متأكد من رغبتك في حذف هذا النشاط؟ لا يمكن التراجع عن هذا الإجراء.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={() => handleDeleteActivity(deleteConfirm)}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleting ? 'جاري الحذف...' : 'حذف'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

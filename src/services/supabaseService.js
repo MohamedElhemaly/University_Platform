@@ -614,7 +614,7 @@ export const studentService = {
   async getActivities() {
     const { data, error } = await supabase
       .from('activities')
-      .select('*')
+      .select('id, title, description, category, date, time, location, duration, company, instructor, host, link, image_url, submitted_by, approved_by, status, rejection_reason, show_as_banner, target_college_id, target_year, target_semester_id, is_admin_created, created_at, updated_at')
       .eq('status', 'approved')
       .order('date', { ascending: true })
 
@@ -636,6 +636,41 @@ export const studentService = {
 
     if (error) throw error
     return data
+  },
+
+  async uploadActivityImage(file) {
+    if (!file) return null
+    
+    try {
+      const fileName = `activities/${Date.now()}_${file.name}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('lecture-materials')
+        .upload(fileName, file)
+
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError)
+        return null
+      }
+
+      const { data } = supabase.storage
+        .from('lecture-materials')
+        .getPublicUrl(fileName)
+
+      return data?.publicUrl || null
+    } catch (error) {
+      console.error('Error uploading activity image:', error)
+      return null
+    }
+  },
+
+  async deleteActivity(activityId) {
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', activityId)
+
+    if (error) throw error
+    return true
   },
 
   // Get points and leaderboard
@@ -789,7 +824,7 @@ export const studentService = {
   async getMyActivities(studentId) {
     const { data, error } = await supabase
       .from('activities')
-      .select('*')
+      .select('id, title, description, category, date, time, location, duration, company, instructor, host, link, image_url, submitted_by, approved_by, status, rejection_reason, show_as_banner, target_college_id, target_year, target_semester_id, is_admin_created, created_at, updated_at')
       .eq('submitted_by', studentId)
       .order('created_at', { ascending: false })
 
@@ -1864,7 +1899,30 @@ export const adminService = {
     let query = supabase
       .from('activities')
       .select(`
-        *,
+        id,
+        title,
+        description,
+        category,
+        date,
+        time,
+        location,
+        duration,
+        company,
+        instructor,
+        host,
+        link,
+        image_url,
+        submitted_by,
+        approved_by,
+        status,
+        rejection_reason,
+        show_as_banner,
+        target_college_id,
+        target_year,
+        target_semester_id,
+        is_admin_created,
+        created_at,
+        updated_at,
         students:submitted_by(student_id, profiles(name))
       `)
 
@@ -1929,6 +1987,31 @@ export const adminService = {
     return data
   },
 
+  async uploadActivityImage(file) {
+    if (!file) return null
+    
+    try {
+      const fileName = `activities/${Date.now()}_${file.name}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('lecture-materials')
+        .upload(fileName, file)
+
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError)
+        return null
+      }
+
+      const { data } = supabase.storage
+        .from('lecture-materials')
+        .getPublicUrl(fileName)
+
+      return data?.publicUrl || null
+    } catch (error) {
+      console.error('Error uploading activity image:', error)
+      return null
+    }
+  },
+
   async updateActivity(activityId, updates) {
     // If marking as banner, clear any existing banner first
     if (updates.show_as_banner) {
@@ -1944,10 +2027,19 @@ export const adminService = {
       .update(updates)
       .eq('id', activityId)
       .select()
-      .single()
 
     if (error) throw error
-    return data
+    return data?.[0] || data
+  },
+
+  async deleteActivity(activityId) {
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', activityId)
+
+    if (error) throw error
+    return true
   },
 
   // ---- SEMESTERS ----

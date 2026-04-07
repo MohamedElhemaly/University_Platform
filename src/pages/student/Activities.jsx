@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Loader2,
   Link2,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -58,6 +59,8 @@ export function StudentActivities() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [newActivity, setNewActivity] = useState({
     title: '',
     description: '',
@@ -66,11 +69,58 @@ export function StudentActivities() {
     time: '',
     location: '',
     link: '',
+    imageFile: null,
+    imagePreview: null,
   })
 
   useEffect(() => {
     loadActivities()
   }, [user])
+
+  const revokeImagePreview = (previewUrl) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }
+
+  const resetNewActivity = () => {
+    revokeImagePreview(newActivity.imagePreview)
+    setNewActivity({
+      title: '',
+      description: '',
+      category: 'event',
+      date: '',
+      time: '',
+      location: '',
+      link: '',
+      imageFile: null,
+      imagePreview: null,
+    })
+  }
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    revokeImagePreview(newActivity.imagePreview)
+    const previewUrl = URL.createObjectURL(file)
+
+    e.target.value = ''
+    setNewActivity({
+      ...newActivity,
+      imageFile: file,
+      imagePreview: previewUrl,
+    })
+  }
+
+  const handleRemoveImage = () => {
+    revokeImagePreview(newActivity.imagePreview)
+    setNewActivity({
+      ...newActivity,
+      imageFile: null,
+      imagePreview: null,
+    })
+  }
 
   const loadActivities = async () => {
     try {
@@ -96,6 +146,17 @@ export function StudentActivities() {
     if (!user?.id) return
     try {
       setSubmitting(true)
+      let imageUrl = null
+
+      if (newActivity.imageFile) {
+        try {
+          imageUrl = await studentService.uploadActivityImage(newActivity.imageFile)
+        } catch (imgError) {
+          console.error('Image upload failed, continuing without image:', imgError)
+          imageUrl = null
+        }
+      }
+
       await studentService.submitActivity(user.id, {
         title: newActivity.title,
         description: newActivity.description,
@@ -104,24 +165,32 @@ export function StudentActivities() {
         time: newActivity.time || null,
         location: newActivity.location || null,
         link: newActivity.link || null,
+        image_url: imageUrl || null,
       })
       setShowSubmitModal(false)
-      setNewActivity({
-        title: '',
-        description: '',
-        category: 'event',
-        date: '',
-        time: '',
-        location: '',
-        link: '',
-      })
+      resetNewActivity()
       setShowSuccessMessage(true)
       setTimeout(() => setShowSuccessMessage(false), 5000)
       await loadActivities()
     } catch (error) {
       console.error('Error submitting activity:', error)
+      alert('حدث خطأ أثناء إرسال النشاط: ' + (error.message || 'خطأ غير معروف'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDeleteActivity = async (activityId) => {
+    try {
+      setDeleting(true)
+      await studentService.deleteActivity(activityId)
+      setDeleteConfirm(null)
+      await loadActivities()
+    } catch (error) {
+      console.error('Error deleting activity:', error)
+      alert('حدث خطأ أثناء حذف النشاط: ' + (error.message || 'خطأ غير معروف'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -195,10 +264,19 @@ export function StudentActivities() {
                   <p className="font-medium text-gray-900 dark:text-white text-sm">{activity.title}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{activity.date ? formatDate(activity.date) : ''}</p>
                 </div>
-                <Badge variant="warning">
-                  <Clock className="w-3 h-3 ml-1" />
-                  قيد المراجعة
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="warning">
+                    <Clock className="w-3 h-3 ml-1" />
+                    قيد المراجعة
+                  </Badge>
+                  <button
+                    onClick={() => setDeleteConfirm(activity.id)}
+                    className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                    title="حذف النشاط"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -227,9 +305,19 @@ export function StudentActivities() {
           
           return (
             <Card key={activity.id} className="flex flex-col h-full">
-              {/* Image Placeholder */}
-              <div className="h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-4 flex items-center justify-center">
-                <Icon className="w-12 h-12 text-gray-400" />
+              {/* Activity image */}
+              <div className="h-40 overflow-hidden rounded-lg mb-4 bg-gray-100 dark:bg-gray-800">
+                {activity.image_url ? (
+                  <img
+                    src={ensureAbsoluteUrl(activity.image_url)}
+                    alt={activity.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <Icon className="w-12 h-12 text-gray-400" />
+                  </div>
+                )}
               </div>
 
               <div className="flex-1">
@@ -299,7 +387,7 @@ export function StudentActivities() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>اقتراح نشاط جديد</CardTitle>
-                <button onClick={() => setShowSubmitModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 rounded-lg">
+                <button onClick={() => { resetNewActivity(); setShowSubmitModal(false) }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -329,6 +417,53 @@ export function StudentActivities() {
                   value={newActivity.description}
                   onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">صورة النشاط</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">اختر صورة توضيحية للنشاط. يمكنك تعديلها أو حذفها قبل الإرسال.</p>
+                <div className="space-y-3">
+                  <label htmlFor="activityImage" className="inline-flex w-full items-center justify-center gap-2 px-4 py-3 border border-dashed rounded-lg cursor-pointer bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <span>اختر صورة للنشاط</span>
+                    <input
+                      id="activityImage"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+
+                  {newActivity.imageFile && (
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300">
+                      <span>{newActivity.imageFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  )}
+
+                  {newActivity.imagePreview && (
+                    <div className="relative w-full h-48 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                      <img
+                        src={newActivity.imagePreview}
+                        alt="معاينة صورة النشاط"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 left-2 rounded-full bg-white/90 text-gray-700 p-1 shadow-sm hover:bg-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -385,7 +520,7 @@ export function StudentActivities() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="secondary" onClick={() => setShowSubmitModal(false)}>
+                <Button variant="secondary" onClick={() => { resetNewActivity(); setShowSubmitModal(false) }}>
                   إلغاء
                 </Button>
                 <Button
@@ -401,6 +536,41 @@ export function StudentActivities() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle>تأكيد الحذف</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6">
+                <p className="text-gray-600 dark:text-gray-400">
+                  هل أنت متأكد من رغبتك في حذف هذا النشاط؟ لا يمكن التراجع عن هذا الإجراء.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={() => handleDeleteActivity(deleteConfirm)}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleting ? 'جاري الحذف...' : 'حذف'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
+
