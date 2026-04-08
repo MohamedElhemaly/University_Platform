@@ -39,10 +39,15 @@ const resolveActivityImageUrl = async (value) => {
 
   if (error) {
     console.error('Error creating signed URL for activity image:', error)
-    return null
+
+    const { data: publicUrlData } = supabase.storage
+      .from(ACTIVITY_IMAGES_BUCKET)
+      .getPublicUrl(imagePath)
+
+    return publicUrlData?.publicUrl || value
   }
 
-  return data?.signedUrl || null
+  return data?.signedUrl || value
 }
 
 const withResolvedActivityImage = async (activity) => {
