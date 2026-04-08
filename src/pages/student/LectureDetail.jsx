@@ -89,7 +89,7 @@ export function LectureDetail() {
     return content || 'لا يوجد محتوى نصي متاح.'
   }
 
-  const hfApiKey = import.meta.env.VITE_HF_API_KEY || 'YOUR_HF_API_KEY'
+  const hfApiKey = import.meta.env.VITE_HF_API_KEY || ''
   const hfModel = import.meta.env.VITE_HF_MODEL || 'tiiuae/falcon-7b-instruct'
 
   const generateTextWithHuggingFace = async (prompt) => {
