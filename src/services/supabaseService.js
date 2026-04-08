@@ -58,7 +58,17 @@ const extractActivityImageBucket = (value) => {
 const normalizeStoredActivityImageValue = (value) => {
   if (!value || typeof value !== 'string') return value
   if (value.startsWith('blob:')) return value
-  if (value.startsWith('http://') || value.startsWith('https://')) return value
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://')
+  ) {
+    if (
+      value.includes('/storage/v1/object/public/') ||
+      value.includes('/storage/v1/object/sign/')
+    ) {
+      return value
+    }
+  }
 
   if (value.includes(':')) {
     const [bucket, path] = value.split(/:(.+)/)
