@@ -4,8 +4,8 @@ import {
   Search,
   Plus,
   Edit3,
+  Trash2,
   Users,
-  GraduationCap,
   X,
   Loader2,
 } from 'lucide-react'
@@ -24,6 +24,7 @@ export function AdminColleges() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddDeptModal, setShowAddDeptModal] = useState(false)
   const [selectedCollege, setSelectedCollege] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [newCollege, setNewCollege] = useState({
     name: '',
     code: '',
@@ -55,7 +56,10 @@ export function AdminColleges() {
   const handleEditDepartmentChange = (index, value) => {
     if (!selectedCollege) return
     const updated = [...(selectedCollege.departments || [])]
-    updated[index] = value
+    const currentDepartment = updated[index]
+    updated[index] = typeof currentDepartment === 'string'
+      ? value
+      : { ...currentDepartment, name: value }
     setSelectedCollege({ ...selectedCollege, departments: updated })
   }
 
@@ -88,10 +92,22 @@ export function AdminColleges() {
   const handleAddCollege = async () => {
     try {
       setSaving(true)
-      await adminService.createCollege({
+      const college = await adminService.createCollege({
         name: newCollege.name,
         code: newCollege.code
       })
+
+      const departmentNames = newCollege.departments
+        .map((department) => department.trim())
+        .filter(Boolean)
+
+      for (const departmentName of departmentNames) {
+        await adminService.createDepartment({
+          college_id: college.id,
+          name: departmentName
+        })
+      }
+
       await loadData()
       setShowAddModal(false)
       setNewCollege({ name: '', code: '', departments: [''] })
@@ -115,6 +131,23 @@ export function AdminColleges() {
         name: selectedCollege.name,
         code: selectedCollege.code
       })
+
+      for (const department of selectedCollege.departments || []) {
+        if (typeof department === 'string' && department.trim()) {
+          await adminService.createDepartment({
+            college_id: selectedCollege.id,
+            name: department.trim()
+          })
+          continue
+        }
+
+        if (department?.id && department.name?.trim()) {
+          await adminService.updateDepartment(department.id, {
+            name: department.name.trim()
+          })
+        }
+      }
+
       await loadData()
       setShowEditModal(false)
       setSelectedCollege(null)
@@ -138,6 +171,37 @@ export function AdminColleges() {
       setShowAddDeptModal(false)
     } catch (error) {
       console.error('Error adding department:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteCollege = async (collegeId) => {
+    try {
+      setSaving(true)
+      await adminService.deleteCollege(collegeId)
+      setDeleteConfirm(null)
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting college:', error)
+      alert('حدث خطأ أثناء حذف الكلية: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteDepartment = async (departmentId) => {
+    try {
+      setSaving(true)
+      await adminService.deleteDepartment(departmentId)
+      await loadData()
+      setSelectedCollege((current) => current ? {
+        ...current,
+        departments: (current.departments || []).filter((department) => department.id !== departmentId)
+      } : current)
+    } catch (error) {
+      console.error('Error deleting department:', error)
+      alert('حدث خطأ أثناء حذف القسم: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -191,9 +255,14 @@ export function AdminColleges() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">{college.code}</p>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => handleEditCollege(college)}>
-                <Edit3 className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={() => handleEditCollege(college)}>
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(college.id)} className="text-red-600 hover:text-red-700">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -340,13 +409,12 @@ export function AdminColleges() {
                       <Input
                         value={typeof dept === 'string' ? dept : dept.name}
                         onChange={(e) => handleEditDepartmentChange(index, e.target.value)}
-                        disabled={typeof dept !== 'string'}
                       />
-                      {(selectedCollege.departments || []).length > 1 && typeof dept === 'string' && (
+                      {(selectedCollege.departments || []).length > 1 && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveEditDepartment(index)}
+                          onClick={() => typeof dept === 'string' ? handleRemoveEditDepartment(index) : handleDeleteDepartment(dept.id)}
                           className="text-red-500 hover:text-red-700"
                         >
                           <X className="w-4 h-4" />
@@ -362,6 +430,25 @@ export function AdminColleges() {
                 </Button>
                 <Button onClick={handleUpdateCollege} className="bg-green-600 hover:bg-green-700">
                   حفظ التعديلات
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle>تأكيد حذف الكلية</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">هل أنت متأكد من حذف هذه الكلية؟</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setDeleteConfirm(null)} disabled={saving}>إلغاء</Button>
+                <Button onClick={() => handleDeleteCollege(deleteConfirm)} disabled={saving} className="bg-red-600 hover:bg-red-700">
+                  {saving ? 'جاري الحذف...' : 'حذف'}
                 </Button>
               </div>
             </CardContent>

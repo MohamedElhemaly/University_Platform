@@ -26,6 +26,7 @@ export function AdminProfessors() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCollege, setFilterCollege] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedProfessor, setSelectedProfessor] = useState(null)
   const [newProfessor, setNewProfessor] = useState({
@@ -120,9 +121,69 @@ export function AdminProfessors() {
     }
   }
 
+  const handleEditProfessor = (professor) => {
+    setSelectedProfessor({
+      id: professor.id,
+      professorId: professor.professor_id || '',
+      name: professor.profiles?.name || '',
+      email: professor.profiles?.email || '',
+      collegeId: professor.college_id || '',
+      departmentId: professor.department_id || '',
+      title: professor.title || 'أستاذ مساعد',
+      status: professor.status || 'active',
+      assignedMaterials: materials.filter((material) => material.professor_id === professor.id).map((material) => material.id),
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateProfessor = async () => {
+    if (!selectedProfessor) return
+
+    try {
+      setSaving(true)
+      await Promise.all([
+        adminService.updateProfessor(selectedProfessor.id, {
+          professor_id: selectedProfessor.professorId,
+          college_id: parseInt(selectedProfessor.collegeId),
+          department_id: parseInt(selectedProfessor.departmentId),
+          title: selectedProfessor.title,
+          status: selectedProfessor.status
+        }),
+        adminService.updateProfessorProfile(selectedProfessor.id, {
+          name: selectedProfessor.name,
+          email: selectedProfessor.email
+        })
+      ])
+
+      const assignedMaterials = selectedProfessor.assignedMaterials || []
+      const currentlyAssigned = materials.filter((material) => material.professor_id === selectedProfessor.id).map((material) => material.id)
+
+      for (const materialId of currentlyAssigned.filter((id) => !assignedMaterials.includes(id))) {
+        await adminService.assignProfessor(materialId, null)
+      }
+
+      for (const materialId of assignedMaterials.filter((id) => !currentlyAssigned.includes(id))) {
+        await adminService.assignProfessor(materialId, selectedProfessor.id)
+      }
+
+      await loadData()
+      setShowEditModal(false)
+      setSelectedProfessor(null)
+    } catch (error) {
+      console.error('Error updating professor:', error)
+      alert('حدث خطأ أثناء تحديث الأستاذ: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleAssignMaterials = (professorId) => {
     const professor = professors.find(p => p.id === professorId)
-    setSelectedProfessor(professor)
+    setSelectedProfessor({
+      ...professor,
+      name: professor?.profiles?.name || '',
+      assignedMaterials: materials.filter((material) => material.professor_id === professorId).map((material) => material.id)
+    })
     setShowAssignModal(true)
   }
 
@@ -136,14 +197,31 @@ export function AdminProfessors() {
     setSelectedProfessor({ ...selectedProfessor, assignedMaterials: newMaterials })
   }
 
-  const handleSaveAssignments = () => {
-    setProfessors(professors.map(p =>
-      p.id === selectedProfessor.id
-        ? { ...p, assignedMaterials: selectedProfessor.assignedMaterials }
-        : p
-    ))
-    setShowAssignModal(false)
-    setSelectedProfessor(null)
+  const handleSaveAssignments = async () => {
+    if (!selectedProfessor) return
+
+    try {
+      setSaving(true)
+      const assignedMaterials = selectedProfessor.assignedMaterials || []
+      const currentlyAssigned = materials.filter((material) => material.professor_id === selectedProfessor.id).map((material) => material.id)
+
+      for (const materialId of currentlyAssigned.filter((id) => !assignedMaterials.includes(id))) {
+        await adminService.assignProfessor(materialId, null)
+      }
+
+      for (const materialId of assignedMaterials.filter((id) => !currentlyAssigned.includes(id))) {
+        await adminService.assignProfessor(materialId, selectedProfessor.id)
+      }
+
+      await loadData()
+      setShowAssignModal(false)
+      setSelectedProfessor(null)
+    } catch (error) {
+      console.error('Error saving assignments:', error)
+      alert('حدث خطأ أثناء حفظ تعيين المقررات: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const selectedCollege = colleges.find(c => c.id === parseInt(newProfessor.collegeId))
@@ -240,6 +318,14 @@ export function AdminProfessors() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditProfessor(professor)}
+                          title="تعديل الأستاذ"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -375,6 +461,81 @@ export function AdminProfessors() {
         </div>
       )}
 
+      {showEditModal && selectedProfessor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>تعديل الأستاذ</CardTitle>
+                <button onClick={() => { setShowEditModal(false); setSelectedProfessor(null) }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الرقم الوظيفي</label>
+                <Input value={selectedProfessor.professorId} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, professorId: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم الأستاذ</label>
+                <Input value={selectedProfessor.name} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">البريد الإلكتروني</label>
+                <Input type="email" value={selectedProfessor.email} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, email: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الكلية</label>
+                <Select value={selectedProfessor.collegeId} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, collegeId: e.target.value, departmentId: '' })}>
+                  <option value="">اختر الكلية</option>
+                  {colleges.map((college) => (
+                    <option key={college.id} value={college.id}>{college.name}</option>
+                  ))}
+                </Select>
+              </div>
+              {selectedProfessor.collegeId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">القسم</label>
+                  <Select value={selectedProfessor.departmentId} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, departmentId: e.target.value })}>
+                    <option value="">اختر القسم</option>
+                    {colleges.find(c => c.id === parseInt(selectedProfessor.collegeId))?.departments?.map((dept) => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الدرجة العلمية</label>
+                  <Select value={selectedProfessor.title} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, title: e.target.value })}>
+                    <option value="أستاذ مساعد">أستاذ مساعد</option>
+                    <option value="أستاذ مشارك">أستاذ مشارك</option>
+                    <option value="أستاذ">أستاذ</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الحالة</label>
+                  <Select value={selectedProfessor.status} onChange={(e) => setSelectedProfessor({ ...selectedProfessor, status: e.target.value })}>
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="secondary" onClick={() => { setShowEditModal(false); setSelectedProfessor(null) }}>
+                  إلغاء
+                </Button>
+                <Button onClick={handleUpdateProfessor} disabled={saving} className="bg-green-600 hover:bg-green-700">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit3 className="w-4 h-4" />}
+                  حفظ التعديلات
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Assign Materials Modal */}
       {showAssignModal && selectedProfessor && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -413,7 +574,7 @@ export function AdminProfessors() {
                 <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
                   إلغاء
                 </Button>
-                <Button onClick={handleSaveAssignments} className="bg-green-600 hover:bg-green-700">
+                <Button onClick={handleSaveAssignments} disabled={saving} className="bg-green-600 hover:bg-green-700">
                   حفظ التعيينات
                 </Button>
               </div>

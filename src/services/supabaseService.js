@@ -1843,6 +1843,18 @@ export const adminService = {
     return data
   },
 
+  async updateStudentProfile(studentId, updates) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', studentId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
   async toggleStudentStatus(studentId, status) {
     return this.updateStudent(studentId, { status })
   },
@@ -1927,6 +1939,18 @@ export const adminService = {
     return data
   },
 
+  async updateProfessorProfile(professorId, updates) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', professorId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
   // ---- COLLEGES ----
   async getColleges() {
     if (!supabase) {
@@ -1982,6 +2006,38 @@ export const adminService = {
     return data
   },
 
+  async updateDepartment(departmentId, updates) {
+    const { data, error } = await supabase
+      .from('departments')
+      .update(updates)
+      .eq('id', departmentId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  async deleteDepartment(departmentId) {
+    const { error } = await supabase
+      .from('departments')
+      .delete()
+      .eq('id', departmentId)
+
+    if (error) throw error
+    return true
+  },
+
+  async deleteCollege(collegeId) {
+    const { error } = await supabase
+      .from('colleges')
+      .delete()
+      .eq('id', collegeId)
+
+    if (error) throw error
+    return true
+  },
+
   // ---- MATERIALS ----
   async getMaterials(filters = {}) {
     let query = supabase
@@ -2026,6 +2082,16 @@ export const adminService = {
 
     if (error) throw error
     return data
+  },
+
+  async deleteMaterial(materialId) {
+    const { error } = await supabase
+      .from('materials')
+      .delete()
+      .eq('id', materialId)
+
+    if (error) throw error
+    return true
   },
 
   async assignProfessor(materialId, professorId) {

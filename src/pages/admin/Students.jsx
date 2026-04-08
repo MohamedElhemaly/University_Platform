@@ -4,13 +4,8 @@ import {
   Search,
   Plus,
   Edit3,
-  Trash2,
   CheckCircle2,
   XCircle,
-  Filter,
-  Download,
-  Upload,
-  Eye,
   BookOpen,
   X,
   Loader2,
@@ -32,6 +27,7 @@ export function AdminStudents() {
   const [filterCollege, setFilterCollege] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -135,6 +131,51 @@ export function AdminStudents() {
       ))
     } catch (error) {
       console.error('Error toggling status:', error)
+    }
+  }
+
+  const handleEditStudent = (student) => {
+    setSelectedStudent({
+      id: student.id,
+      studentId: student.student_id || '',
+      name: student.profiles?.name || '',
+      email: student.profiles?.email || '',
+      collegeId: student.college_id || '',
+      departmentId: student.department_id || '',
+      year: student.year || 1,
+      semesterId: student.semester_id || '',
+      status: student.status || 'active',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateStudent = async () => {
+    if (!selectedStudent) return
+
+    try {
+      setSaving(true)
+      await Promise.all([
+        adminService.updateStudent(selectedStudent.id, {
+          student_id: selectedStudent.studentId,
+          college_id: parseInt(selectedStudent.collegeId),
+          department_id: parseInt(selectedStudent.departmentId),
+          year: parseInt(selectedStudent.year),
+          semester_id: parseInt(selectedStudent.semesterId),
+          status: selectedStudent.status
+        }),
+        adminService.updateStudentProfile(selectedStudent.id, {
+          name: selectedStudent.name,
+          email: selectedStudent.email || `${selectedStudent.studentId}@university.edu`
+        })
+      ])
+      await loadData()
+      setShowEditModal(false)
+      setSelectedStudent(null)
+    } catch (error) {
+      console.error('Error updating student:', error)
+      alert('حدث خطأ أثناء تحديث الطالب: ' + error.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -294,6 +335,14 @@ export function AdminStudents() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleEditStudent(student)}
+                          title="تعديل الطالب"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleAssignMaterials(student.id)}
                           title="تعيين المقررات"
                         >
@@ -426,6 +475,116 @@ export function AdminStudents() {
                 >
                   <Plus className="w-4 h-4" />
                   إضافة الطالب
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showEditModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>تعديل الطالب</CardTitle>
+                <button onClick={() => { setShowEditModal(false); setSelectedStudent(null) }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">رقم الطالب</label>
+                <Input
+                  value={selectedStudent.studentId}
+                  onChange={(e) => setSelectedStudent({ ...selectedStudent, studentId: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">اسم الطالب</label>
+                <Input
+                  value={selectedStudent.name}
+                  onChange={(e) => setSelectedStudent({ ...selectedStudent, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">البريد الإلكتروني</label>
+                <Input
+                  type="email"
+                  value={selectedStudent.email}
+                  onChange={(e) => setSelectedStudent({ ...selectedStudent, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الكلية</label>
+                <Select
+                  value={selectedStudent.collegeId}
+                  onChange={(e) => setSelectedStudent({ ...selectedStudent, collegeId: e.target.value, departmentId: '' })}
+                >
+                  <option value="">اختر الكلية</option>
+                  {colleges.map((college) => (
+                    <option key={college.id} value={college.id}>{college.name}</option>
+                  ))}
+                </Select>
+              </div>
+              {selectedStudent.collegeId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">القسم</label>
+                  <Select
+                    value={selectedStudent.departmentId}
+                    onChange={(e) => setSelectedStudent({ ...selectedStudent, departmentId: e.target.value })}
+                  >
+                    <option value="">اختر القسم</option>
+                    {colleges.find(c => c.id === parseInt(selectedStudent.collegeId))?.departments?.map((dept) => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">السنة الدراسية</label>
+                  <Select
+                    value={selectedStudent.year}
+                    onChange={(e) => setSelectedStudent({ ...selectedStudent, year: e.target.value })}
+                  >
+                    <option value={1}>السنة الأولى</option>
+                    <option value={2}>السنة الثانية</option>
+                    <option value={3}>السنة الثالثة</option>
+                    <option value={4}>السنة الرابعة</option>
+                    <option value={5}>السنة الخامسة</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الفصل الدراسي</label>
+                  <Select
+                    value={selectedStudent.semesterId}
+                    onChange={(e) => setSelectedStudent({ ...selectedStudent, semesterId: e.target.value })}
+                  >
+                    {semesters.map((sem) => (
+                      <option key={sem.id} value={sem.id}>{sem.name}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">الحالة</label>
+                <Select
+                  value={selectedStudent.status}
+                  onChange={(e) => setSelectedStudent({ ...selectedStudent, status: e.target.value })}
+                >
+                  <option value="active">نشط</option>
+                  <option value="inactive">غير نشط</option>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="secondary" onClick={() => { setShowEditModal(false); setSelectedStudent(null) }}>
+                  إلغاء
+                </Button>
+                <Button onClick={handleUpdateStudent} disabled={saving} className="bg-green-600 hover:bg-green-700">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit3 className="w-4 h-4" />}
+                  حفظ التعديلات
                 </Button>
               </div>
             </CardContent>
