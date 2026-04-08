@@ -1,7 +1,7 @@
 import { supabase, auth, db, storage } from '../lib/supabase'
 
-const ACTIVITY_IMAGES_BUCKET = 'lecture-materials'
 const ACTIVITY_IMAGES_PREFIX = 'activities/'
+const ACTIVITY_IMAGE_BUCKETS = ['lecture-materials', 'activity-images']
 
 const sanitizeFileName = (fileName = 'image') => {
   return fileName
@@ -17,37 +17,113 @@ const extractActivityImagePath = (value) => {
 
   try {
     const url = new URL(value)
-    const marker = `/${ACTIVITY_IMAGES_BUCKET}/`
-    const bucketIndex = url.pathname.indexOf(marker)
+    for (const bucket of ACTIVITY_IMAGE_BUCKETS) {
+      const marker = `/${bucket}/`
+      const bucketIndex = url.pathname.indexOf(marker)
 
-    if (bucketIndex === -1) return value
+      if (bucketIndex !== -1) {
+        return decodeURIComponent(url.pathname.slice(bucketIndex + marker.length))
+      }
+    }
 
-    return decodeURIComponent(url.pathname.slice(bucketIndex + marker.length))
+    return value
   } catch {
     return value
   }
 }
 
+const extractActivityImageBucket = (value) => {
+  if (!value || typeof value !== 'string') return ACTIVITY_IMAGE_BUCKETS[0]
+  if (value.startsWith('blob:')) return null
+
+  if (value.includes(':') && !value.startsWith('http://') && !value.startsWith('https://')) {
+    const [bucket] = value.split(':', 1)
+    if (ACTIVITY_IMAGE_BUCKETS.includes(bucket)) return bucket
+  }
+
+  try {
+    const url = new URL(value)
+    for (const bucket of ACTIVITY_IMAGE_BUCKETS) {
+      if (url.pathname.includes(`/${bucket}/`)) {
+        return bucket
+      }
+    }
+  } catch {
+    return ACTIVITY_IMAGE_BUCKETS[0]
+  }
+
+  return ACTIVITY_IMAGE_BUCKETS[0]
+}
+
+const normalizeStoredActivityImageValue = (value) => {
+  if (!value || typeof value !== 'string') return value
+  if (value.startsWith('blob:')) return value
+  if (value.startsWith('http://') || value.startsWith('https://')) return value
+
+  if (value.includes(':')) {
+    const [bucket, path] = value.split(/:(.+)/)
+    if (ACTIVITY_IMAGE_BUCKETS.includes(bucket) && path) {
+      return { bucket, path }
+    }
+  }
+
+  return {
+    bucket: extractActivityImageBucket(value),
+    path: extractActivityImagePath(value)
+  }
+}
+
+const downloadActivityImageAsBlobUrl = async (bucket, imagePath) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .download(imagePath)
+
+    if (error || !data) {
+      if (error) {
+        console.error('Error downloading activity image:', error)
+      }
+      return null
+    }
+
+    return URL.createObjectURL(data)
+  } catch (error) {
+    console.error('Unexpected error downloading activity image:', error)
+    return null
+  }
+}
+
 const resolveActivityImageUrl = async (value) => {
-  const imagePath = extractActivityImagePath(value)
-  if (!imagePath || imagePath.startsWith('blob:')) return imagePath
-  if (!imagePath.startsWith(ACTIVITY_IMAGES_PREFIX)) return imagePath
+  const normalizedValue = normalizeStoredActivityImageValue(value)
+  if (!normalizedValue || typeof normalizedValue === 'string') return normalizedValue
+
+  const { bucket, path: imagePath } = normalizedValue
+  if (!bucket || !imagePath || !imagePath.startsWith(ACTIVITY_IMAGES_PREFIX)) {
+    return value
+  }
 
   const { data, error } = await supabase.storage
-    .from(ACTIVITY_IMAGES_BUCKET)
+    .from(bucket)
     .createSignedUrl(imagePath, 60 * 60 * 24 * 30)
+
+  if (!error && data?.signedUrl) {
+    return data.signedUrl
+  }
 
   if (error) {
     console.error('Error creating signed URL for activity image:', error)
-
-    const { data: publicUrlData } = supabase.storage
-      .from(ACTIVITY_IMAGES_BUCKET)
-      .getPublicUrl(imagePath)
-
-    return publicUrlData?.publicUrl || value
   }
 
-  return data?.signedUrl || value
+  const blobUrl = await downloadActivityImageAsBlobUrl(bucket, imagePath)
+  if (blobUrl) {
+    return blobUrl
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(imagePath)
+
+  return publicUrlData?.publicUrl || value
 }
 
 const withResolvedActivityImage = async (activity) => {
@@ -703,7 +779,7 @@ export const studentService = {
     try {
       const fileName = `${ACTIVITY_IMAGES_PREFIX}${Date.now()}_${sanitizeFileName(file.name)}`
       const { error: uploadError } = await supabase.storage
-        .from(ACTIVITY_IMAGES_BUCKET)
+        .from(ACTIVITY_IMAGE_BUCKETS[0])
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
@@ -714,7 +790,7 @@ export const studentService = {
         return null
       }
 
-      return fileName
+      return `${ACTIVITY_IMAGE_BUCKETS[0]}:${fileName}`
     } catch (error) {
       console.error('Error uploading activity image:', error)
       return null
@@ -736,9 +812,10 @@ export const studentService = {
     }
 
     const imagePath = extractActivityImagePath(data.image_url)
+    const imageBucket = extractActivityImageBucket(data.image_url)
     if (imagePath?.startsWith(ACTIVITY_IMAGES_PREFIX)) {
       const { error: storageError } = await supabase.storage
-        .from(ACTIVITY_IMAGES_BUCKET)
+        .from(imageBucket)
         .remove([imagePath])
 
       if (storageError) {
@@ -2069,7 +2146,7 @@ export const adminService = {
     try {
       const fileName = `${ACTIVITY_IMAGES_PREFIX}${Date.now()}_${sanitizeFileName(file.name)}`
       const { error: uploadError } = await supabase.storage
-        .from(ACTIVITY_IMAGES_BUCKET)
+        .from(ACTIVITY_IMAGE_BUCKETS[0])
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
@@ -2080,7 +2157,7 @@ export const adminService = {
         return null
       }
 
-      return fileName
+      return `${ACTIVITY_IMAGE_BUCKETS[0]}:${fileName}`
     } catch (error) {
       console.error('Error uploading activity image:', error)
       return null
@@ -2122,9 +2199,10 @@ export const adminService = {
     }
 
     const imagePath = extractActivityImagePath(data.image_url)
+    const imageBucket = extractActivityImageBucket(data.image_url)
     if (imagePath?.startsWith(ACTIVITY_IMAGES_PREFIX)) {
       const { error: storageError } = await supabase.storage
-        .from(ACTIVITY_IMAGES_BUCKET)
+        .from(imageBucket)
         .remove([imagePath])
 
       if (storageError) {
