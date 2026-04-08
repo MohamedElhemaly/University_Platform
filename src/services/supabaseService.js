@@ -1838,7 +1838,19 @@ export const adminService = {
       .eq('id', studentId)
 
     if (error) throw error
-    return { id: studentId, ...updates }
+
+    const { data: refreshedStudent, error: refreshError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', studentId)
+      .maybeSingle()
+
+    if (refreshError) throw refreshError
+    if (!refreshedStudent) {
+      throw new Error('تعذر التحقق من تحديث بيانات الطالب. تأكد من صلاحيات الأدمن في Supabase.')
+    }
+
+    return refreshedStudent
   },
 
   async updateStudentProfile(studentId, updates) {
@@ -1848,7 +1860,19 @@ export const adminService = {
       .eq('id', studentId)
 
     if (error) throw error
-    return { id: studentId, ...updates }
+
+    const { data: refreshedProfile, error: refreshError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', studentId)
+      .maybeSingle()
+
+    if (refreshError) throw refreshError
+    if (!refreshedProfile) {
+      throw new Error('تعذر التحقق من تحديث ملف الطالب. غالبًا سياسة profiles لا تسمح للأدمن بالتعديل في بيئة الإنتاج.')
+    }
+
+    return refreshedProfile
   },
 
   async toggleStudentStatus(studentId, status) {
