@@ -1832,27 +1832,23 @@ export const adminService = {
   },
 
   async updateStudent(studentId, updates) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('students')
       .update(updates)
       .eq('id', studentId)
-      .select()
-      .single()
 
     if (error) throw error
-    return data
+    return { id: studentId, ...updates }
   },
 
   async updateStudentProfile(studentId, updates) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', studentId)
-      .select()
-      .single()
 
     if (error) throw error
-    return data
+    return { id: studentId, ...updates }
   },
 
   async toggleStudentStatus(studentId, status) {

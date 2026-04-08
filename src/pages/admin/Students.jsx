@@ -122,15 +122,19 @@ export function AdminStudents() {
   const handleToggleStatus = async (studentId) => {
     try {
       const student = students.find(s => s.id === studentId)
+      if (!student) return
+
       const newStatus = student.status === 'active' ? 'inactive' : 'active'
       await adminService.toggleStudentStatus(studentId, newStatus)
-      setStudents(students.map(s => 
+      setStudents((prevStudents) => prevStudents.map((s) => 
         s.id === studentId 
           ? { ...s, status: newStatus }
           : s
       ))
+      await loadData()
     } catch (error) {
       console.error('Error toggling status:', error)
+      alert('حدث خطأ أثناء تحديث حالة الطالب: ' + error.message)
     }
   }
 
