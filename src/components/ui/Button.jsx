@@ -1,11 +1,11 @@
 import { cn } from '../../lib/utils'
 
 const variants = {
-  primary: 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm',
-  secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-  outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
-  ghost: 'text-gray-700 hover:bg-gray-100',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+  primary: 'bg-[linear-gradient(135deg,#fde047_0%,#eab308_58%,#ca8a04_100%)] text-black shadow-[0_18px_35px_-20px_rgba(250,204,21,0.65)] hover:brightness-105',
+  secondary: 'border border-primary-500/10 bg-white/[0.04] text-gray-100 hover:border-primary-400/25 hover:bg-white/[0.08]',
+  outline: 'border border-primary-500/20 bg-transparent text-primary-300 hover:bg-primary-500/10 hover:text-primary-200',
+  ghost: 'text-gray-200 hover:bg-white/[0.06]',
+  danger: 'bg-red-600 text-white hover:bg-red-700 shadow-[0_18px_35px_-22px_rgba(220,38,38,0.6)]',
 }
 
 const sizes = {
@@ -25,7 +25,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 focus:ring-offset-[#050505] disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant],
         sizes[size],
         className

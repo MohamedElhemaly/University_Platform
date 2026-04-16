@@ -306,18 +306,23 @@ export function StudentActivities() {
           const Icon = getIcon(activity.category)
           
           return (
-            <Card key={activity.id} className="flex flex-col h-full">
+            <Card key={activity.id} className="group flex flex-col h-full">
               {/* Activity image */}
-              <div className="h-40 overflow-hidden rounded-lg mb-4 bg-gray-100 dark:bg-gray-800">
+              <div className="mb-4">
                 {activity.image_url ? (
-                  <img
-                    src={ensureAbsoluteUrl(activity.image_url)}
-                    alt={activity.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative mx-auto aspect-[16/10] w-full max-w-[280px] overflow-hidden rounded-[24px] border border-primary-500/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-3 shadow-[0_20px_50px_-30px_rgba(250,204,21,0.35)]">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_45%)]" />
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[18px] bg-[#151515]">
+                      <img
+                        src={ensureAbsoluteUrl(activity.image_url)}
+                        alt={activity.title}
+                        className="max-h-[88%] max-w-[78%] object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                  </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <Icon className="w-12 h-12 text-gray-400" />
+                  <div className="mx-auto flex aspect-[16/10] w-full max-w-[280px] items-center justify-center overflow-hidden rounded-[24px] border border-primary-500/10 bg-[#151515]">
+                    <Icon className="w-12 h-12 text-gray-500" />
                   </div>
                 )}
               </div>

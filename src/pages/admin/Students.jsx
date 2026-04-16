@@ -9,6 +9,8 @@ import {
   BookOpen,
   X,
   Loader2,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -29,6 +31,8 @@ export function AdminStudents() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState(null)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [saving, setSaving] = useState(false)
   const [newStudent, setNewStudent] = useState({
@@ -74,14 +78,17 @@ export function AdminStudents() {
     setLoading(false)
   }
 
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+
   const filteredStudents = students.filter((student) => {
-    const name = student.profiles?.name || ''
-    const studentId = student.student_id || ''
-    const email = student.profiles?.email || ''
+    const name = (student.profiles?.name || '').toLowerCase()
+    const studentId = (student.student_id || '').toLowerCase()
+    const email = (student.profiles?.email || '').toLowerCase()
     const matchesSearch =
-      name.includes(searchQuery) ||
-      studentId.includes(searchQuery) ||
-      email.includes(searchQuery)
+      !normalizedSearch ||
+      name.includes(normalizedSearch) ||
+      studentId.includes(normalizedSearch) ||
+      email.includes(normalizedSearch)
     const matchesCollege = filterCollege === 'all' || student.college_id === parseInt(filterCollege)
     const matchesStatus = filterStatus === 'all' || student.status === filterStatus
     return matchesSearch && matchesCollege && matchesStatus
@@ -135,6 +142,28 @@ export function AdminStudents() {
     } catch (error) {
       console.error('Error toggling status:', error)
       alert('حدث خطأ أثناء تحديث حالة الطالب: ' + error.message)
+    }
+  }
+
+  const handleDeleteClick = (student) => {
+    setStudentToDelete(student)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return
+    try {
+      setSaving(true)
+      await adminService.deleteStudent(studentToDelete.id)
+      setStudents((currentStudents) => currentStudents.filter((student) => student.id !== studentToDelete.id))
+      setShowDeleteModal(false)
+      setStudentToDelete(null)
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting student:', error)
+      alert('حدث خطأ أثناء حذف الطالب: ' + error.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -363,6 +392,15 @@ export function AdminStudents() {
                           ) : (
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                           )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(student)}
+                          title="حذف الطالب"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -639,6 +677,41 @@ export function AdminStudents() {
                 </Button>
               </div>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && studentToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertTriangle className="w-6 h-6" />
+                <CardTitle className="text-red-600">تأكيد حذف الطالب</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700 dark:text-gray-300">
+                هل أنت متأكد أنك تريد حذف الطالب <span className="font-bold">{studentToDelete.profiles?.name}</span> نهائياً؟
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                سيتم حذف كافة البيانات المرتبطة بالطالب بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.
+              </p>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="secondary" onClick={() => { setShowDeleteModal(false); setStudentToDelete(null) }}>
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  disabled={saving}
+                  className="bg-red-600 hover:bg-red-700 focus:bg-red-700 text-white"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  تأكيد الحذف
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}

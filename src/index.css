@@ -17,8 +17,49 @@
   font-family: 'IBM Plex Sans Arabic', sans-serif;
 }
 
+:root {
+  color-scheme: dark;
+  --surface-0: #050505;
+  --surface-1: #0b0b0b;
+  --surface-2: #121212;
+  --surface-3: #181818;
+  --surface-4: #202020;
+  --border-subtle: rgba(250, 204, 21, 0.08);
+  --border-strong: rgba(250, 204, 21, 0.22);
+  --text-primary: #f7f4e8;
+  --text-secondary: #b7b09a;
+  --text-muted: #7d7868;
+  --glow-soft: 0 24px 80px -40px rgba(250, 204, 21, 0.32);
+  --glow-strong: 0 30px 90px -45px rgba(250, 204, 21, 0.5);
+}
+
+html {
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(250, 204, 21, 0.08), transparent 24%),
+    linear-gradient(180deg, #090909 0%, #040404 100%);
+}
+
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply min-h-screen bg-[#0a0a0a] text-gray-200 antialiased selection:bg-primary-500/30 selection:text-primary-500;
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.1), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(250, 204, 21, 0.08), transparent 20%),
+    linear-gradient(180deg, #080808 0%, #050505 100%);
+  color: var(--text-primary);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 200ms;
 }
 
 @layer utilities {
@@ -29,42 +70,73 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .panel-grid {
+    background-image:
+      linear-gradient(rgba(250, 204, 21, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .glass-panel {
+    background: linear-gradient(180deg, rgba(24, 24, 24, 0.92), rgba(10, 10, 10, 0.94));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--glow-soft);
+    backdrop-filter: blur(18px);
+  }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 transition-shadow hover:shadow-md;
+    @apply rounded-2xl p-4 transition-all duration-300;
+    background:
+      linear-gradient(180deg, rgba(24, 24, 24, 0.94), rgba(10, 10, 10, 0.98));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--glow-soft);
+  }
+
+  .card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--glow-strong);
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors;
+    @apply px-4 py-2 rounded-xl font-bold text-black focus:ring-4 focus:ring-primary-500/40 transition-all hover:-translate-y-0.5 active:translate-y-0;
+    background: linear-gradient(135deg, #fde047 0%, #eab308 58%, #ca8a04 100%);
+    box-shadow: 0 18px 35px -18px rgba(250, 204, 21, 0.55);
   }
   
   .btn-secondary {
-    @apply bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors;
+    @apply px-4 py-2 rounded-xl font-medium transition-colors;
+    background: rgba(17, 17, 17, 0.9);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    color: var(--text-primary);
   }
   
   .input {
-    @apply w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-all placeholder:text-gray-500;
+    background: rgba(17, 17, 17, 0.88);
+    border: 1px solid rgba(245, 158, 11, 0.12);
+    color: #fff;
   }
   
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border;
   }
   
   .badge-success {
-    @apply bg-green-100 text-green-800;
+    @apply bg-green-500/10 text-green-400 border-green-500/20;
   }
   
   .badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
+    @apply bg-primary-500/10 text-primary-400 border-primary-500/20;
   }
   
   .badge-danger {
-    @apply bg-red-100 text-red-800;
+    @apply bg-red-500/10 text-red-400 border-red-500/20;
   }
   
   .badge-info {
-    @apply bg-blue-100 text-blue-800;
+    @apply bg-blue-500/10 text-blue-400 border-blue-500/20;
   }
 }

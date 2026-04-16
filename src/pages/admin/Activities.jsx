@@ -854,7 +854,7 @@ export function AdminActivities() {
                     >
                       <option value="">جميع الكليات</option>
                       {colleges.map((college) => (
-                        <option key={college.id} value={college.name}>{college.name}</option>
+                        <option key={college.id} value={college.id}>{college.name}</option>
                       ))}
                     </Select>
                   </div>

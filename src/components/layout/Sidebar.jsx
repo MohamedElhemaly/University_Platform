@@ -1,25 +1,23 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import {
-  Home,
   BookOpen,
-  Calendar,
-  Trophy,
-  Sparkles,
-  Settings,
-  LogOut,
-  GraduationCap,
-  BarChart3,
-  Users,
-  FileText,
-  X,
-  Bell,
-  Award,
-  FolderOpen,
-  ClipboardCheck,
   Building2,
-  Shield,
+  Calendar,
+  ClipboardCheck,
+  FileText,
+  FolderOpen,
+  GraduationCap,
+  Home,
+  LogOut,
   MessageCircle,
+  Settings,
+  Shield,
+  Sparkles,
+  Trophy,
+  Users,
+  X,
+  BarChart3,
 } from 'lucide-react'
 
 const studentNav = [
@@ -56,81 +54,91 @@ export function Sidebar({ userType, isOpen, onClose }) {
 
   return (
     <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-      
+      {isOpen && <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" onClick={onClose} />}
+
       <aside
         className={cn(
-          'fixed top-0 right-0 h-full w-72 bg-white border-l border-gray-200 z-50 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-0',
+          'fixed top-0 right-0 z-50 h-full w-72 transform border-l border-primary-500/10 bg-[#080808]/95 backdrop-blur-xl transition-transform duration-300 lg:static lg:z-0 lg:translate-x-0',
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-gray-100">
+        <div className="flex h-full flex-col">
+          <div className="border-b border-primary-500/10 p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-                  <GraduationCap className="w-6 h-6 text-white" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#fde047_0%,#eab308_60%,#ca8a04_100%)] shadow-[0_18px_34px_-18px_rgba(250,204,21,0.75)]">
+                  <Shield className="h-5 w-5 text-black" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-gray-900">منصة التعلم</h1>
-                  <p className="text-xs text-gray-500">الجامعية</p>
+                  <h1 className="font-bold text-white">University Hub</h1>
+                  <p className="text-xs text-primary-300">Black Edition UI</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                className="rounded-xl border border-primary-500/10 bg-white/[0.03] p-2 text-gray-300 hover:border-primary-400/25 hover:bg-white/[0.06] lg:hidden"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-primary-500/10 bg-[linear-gradient(135deg,rgba(250,204,21,0.16),rgba(250,204,21,0.02))] p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-primary-300/80">Workspace</p>
+              <p className="mt-2 text-sm font-semibold text-white">
+                {userType === 'admin' ? 'Control Center' : userType === 'professor' ? 'Teaching Flow' : 'Student Journey'}
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                {location.pathname}
+              </p>
             </div>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 space-y-2 overflow-y-auto p-4">
             {navItems.map((item) => {
               const isActive = location.pathname === item.href
+
               return (
                 <NavLink
                   key={item.href}
                   to={item.href}
                   onClick={onClose}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+                    'group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'border border-primary-500/20 bg-primary-500/10 text-primary-200 shadow-[0_18px_40px_-28px_rgba(250,204,21,0.55)]'
+                      : 'border border-transparent text-gray-400 hover:border-primary-500/10 hover:bg-white/[0.04] hover:text-white'
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-xl transition-colors',
+                      isActive ? 'bg-primary-500 text-black' : 'bg-white/[0.04] text-gray-400 group-hover:text-primary-300'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <span>{item.name}</span>
                 </NavLink>
               )
             })}
           </nav>
 
-          <div className="p-4 border-t border-gray-100">
+          <div className="border-t border-primary-500/10 p-4">
             {userType !== 'admin' && (
               <NavLink
                 to={userType === 'professor' ? '/professor/settings' : '/student/settings'}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                className="mb-2 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-gray-300 transition-colors hover:bg-white/[0.04] hover:text-white"
               >
-                <Settings className="w-5 h-5" />
+                <Settings className="h-5 w-5 text-primary-300" />
                 الإعدادات
               </NavLink>
             )}
+
             <NavLink
-              to={
-                userType === 'admin' ? '/admin/login' :
-                userType === 'professor' ? '/professor/login' :
-                '/student/login'
-              }
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              to={userType === 'admin' ? '/admin/login' : userType === 'professor' ? '/professor/login' : '/student/login'}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="h-5 w-5" />
               تسجيل الخروج
             </NavLink>
           </div>

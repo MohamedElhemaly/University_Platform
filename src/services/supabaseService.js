@@ -10,6 +10,66 @@ const sanitizeFileName = (fileName = 'image') => {
     .replace(/_+/g, '_')
 }
 
+const normalizeDigits = (value = '') => {
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩'
+  const easternArabicIndic = '۰۱۲۳۴۵۶۷۸۹'
+
+  return String(value).replace(/[٠-٩۰-۹]/g, (digit) => {
+    const arabicIndex = arabicIndic.indexOf(digit)
+    if (arabicIndex !== -1) return String(arabicIndex)
+
+    const easternIndex = easternArabicIndic.indexOf(digit)
+    if (easternIndex !== -1) return String(easternIndex)
+
+    return digit
+  })
+}
+
+const normalizeTimeValue = (value) => {
+  if (value === null || value === undefined || value === '') return null
+
+  const sanitized = normalizeDigits(value)
+    .replace(/[\u200e\u200f\u061c]/g, '')
+    .trim()
+
+  const match = sanitized.match(/(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*(\d{2}))?/)
+  if (!match) return null
+
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  const seconds = Number(match[3] || '0')
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    Number.isNaN(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const normalizeTimeFields = (payload, keys = ['time', 'end_time']) => {
+  if (!payload || typeof payload !== 'object') return payload
+
+  const normalizedPayload = { ...payload }
+
+  for (const key of keys) {
+    if (key in normalizedPayload) {
+      normalizedPayload[key] = normalizeTimeValue(normalizedPayload[key])
+    }
+  }
+
+  return normalizedPayload
+}
+
 const extractActivityImagePath = (value) => {
   if (!value || typeof value !== 'string') return null
   if (value.startsWith('blob:')) return value
@@ -769,10 +829,12 @@ export const studentService = {
 
   // Submit activity
   async submitActivity(studentId, activityData) {
+    const normalizedActivityData = normalizeTimeFields(activityData)
+
     const { data, error } = await supabase
       .from('activities')
       .insert({
-        ...activityData,
+        ...normalizedActivityData,
         submitted_by: studentId,
         status: 'pending'
       })
@@ -1126,9 +1188,11 @@ export const professorService = {
 
   // Create lecture
   async createLecture(lectureData) {
+    const normalizedLectureData = normalizeTimeFields(lectureData)
+
     const { data, error } = await supabase
       .from('lectures')
-      .insert(lectureData)
+      .insert(normalizedLectureData)
       .select()
       .single()
 
@@ -1138,9 +1202,11 @@ export const professorService = {
 
   // Update lecture
   async updateLecture(lectureId, updates) {
+    const normalizedUpdates = normalizeTimeFields(updates)
+
     const { data, error } = await supabase
       .from('lectures')
-      .update(updates)
+      .update(normalizedUpdates)
       .eq('id', lectureId)
       .select()
       .single()
@@ -1330,12 +1396,14 @@ export const professorService = {
 
   // Create calendar event
   async createCalendarEvent(professorId, eventData) {
+    const normalizedEventData = normalizeTimeFields(eventData)
+
     const { data, error } = await supabase
       .from('calendar_events')
       .insert({
         user_id: professorId,
         user_type: 'professor',
-        ...eventData
+        ...normalizedEventData
       })
       .select()
       .single()
@@ -1879,6 +1947,41 @@ export const adminService = {
     return this.updateStudent(studentId, { status })
   },
 
+  async deleteStudent(studentId) {
+    // Remove records that may block profile/student deletion because
+    // not every relation in the schema cascades automatically.
+    const cleanupSteps = [
+      () => supabase.from('activities').delete().eq('submitted_by', studentId),
+      () => supabase.from('profiles').delete().eq('id', studentId),
+    ]
+
+    for (const runCleanup of cleanupSteps) {
+      const { error } = await runCleanup()
+      if (error) throw error
+    }
+
+    // Fallback: if the profile deletion did not remove the student row
+    // because of environment-specific policies, try deleting it directly.
+    const { data: remainingStudent, error: checkError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('id', studentId)
+      .maybeSingle()
+
+    if (checkError) throw checkError
+
+    if (remainingStudent) {
+      const { error: studentError } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', studentId)
+
+      if (studentError) throw studentError
+    }
+
+    return true
+  },
+
   // ---- PROFESSORS ----
   async getProfessors(filters = {}) {
     let query = supabase
@@ -2213,8 +2316,10 @@ export const adminService = {
   },
 
   async createActivity(adminId, activityData) {
+    const normalizedActivityData = normalizeTimeFields(activityData)
+
     // If marking as banner, clear any existing banner first
-    if (activityData.show_as_banner) {
+    if (normalizedActivityData.show_as_banner) {
       await supabase
         .from('activities')
         .update({ show_as_banner: false })
@@ -2224,7 +2329,7 @@ export const adminService = {
     const { data, error } = await supabase
       .from('activities')
       .insert({
-        ...activityData,
+        ...normalizedActivityData,
         approved_by: adminId,
         status: 'approved',
         is_admin_created: true
@@ -2261,8 +2366,10 @@ export const adminService = {
   },
 
   async updateActivity(activityId, updates) {
+    const normalizedUpdates = normalizeTimeFields(updates)
+
     // If marking as banner, clear any existing banner first
-    if (updates.show_as_banner) {
+    if (normalizedUpdates.show_as_banner) {
       await supabase
         .from('activities')
         .update({ show_as_banner: false })
@@ -2272,7 +2379,7 @@ export const adminService = {
 
     const { data, error } = await supabase
       .from('activities')
-      .update(updates)
+      .update(normalizedUpdates)
       .eq('id', activityId)
       .select()
 
