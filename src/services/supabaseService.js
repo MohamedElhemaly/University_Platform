@@ -2005,7 +2005,7 @@ export const adminService = {
     // 1. Create auth user using signUp (works with anon key)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: professorData.email,
-      password: professorData.professor_id, // Initial password is professor_id
+      password: professorData.email, // Initial password is the email for first login
       options: {
         emailRedirectTo: undefined,
         data: {
@@ -2072,6 +2072,72 @@ export const adminService = {
 
     if (error) throw error
     return data
+  },
+
+  async deleteProfessor(professorId) {
+    const ensureProfessorRemoved = async () => {
+      const { data, error } = await supabase
+        .from('professors')
+        .select('id')
+        .eq('id', professorId)
+        .maybeSingle()
+
+      if (error) throw error
+      return !data
+    }
+
+    const { error: unassignMaterialsError } = await supabase
+      .from('materials')
+      .update({ professor_id: null })
+      .eq('professor_id', professorId)
+
+    if (unassignMaterialsError) throw unassignMaterialsError
+
+    const attemptProfileDelete = async () => {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', professorId)
+
+      return error
+    }
+
+    let deleteError = await attemptProfileDelete()
+    if (await ensureProfessorRemoved()) {
+      return true
+    }
+
+    const cleanupSteps = [
+      () => supabase.from('lecture_questions').update({ answered_by: null, answered_at: null }).eq('answered_by', professorId),
+      () => supabase.from('announcements').delete().eq('professor_id', professorId),
+    ]
+
+    for (const runCleanup of cleanupSteps) {
+      const { error } = await runCleanup()
+      if (error) {
+        deleteError = error
+      }
+    }
+
+    deleteError = await attemptProfileDelete()
+    if (await ensureProfessorRemoved()) {
+      return true
+    }
+
+    const { error: professorError } = await supabase
+      .from('professors')
+      .delete()
+      .eq('id', professorId)
+
+    if (professorError) {
+      throw professorError
+    }
+
+    if (!(await ensureProfessorRemoved())) {
+      throw deleteError || new Error('تعذر حذف الأستاذ من قاعدة البيانات. غالبًا يحتاج الأدمن سياسات حذف إضافية على profiles و professors في Supabase.')
+    }
+
+    return true
   },
 
   // ---- COLLEGES ----

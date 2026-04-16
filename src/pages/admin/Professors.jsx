@@ -9,6 +9,8 @@ import {
   BookOpen,
   X,
   Loader2,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -28,6 +30,8 @@ export function AdminProfessors() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [professorToDelete, setProfessorToDelete] = useState(null)
   const [selectedProfessor, setSelectedProfessor] = useState(null)
   const [newProfessor, setNewProfessor] = useState({
     professorId: '',
@@ -134,6 +138,36 @@ export function AdminProfessors() {
       assignedMaterials: materials.filter((material) => material.professor_id === professor.id).map((material) => material.id),
     })
     setShowEditModal(true)
+  }
+
+  const handleDeleteClick = (professor) => {
+    setProfessorToDelete(professor)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!professorToDelete) return
+
+    try {
+      setSaving(true)
+      await adminService.deleteProfessor(professorToDelete.id)
+      setProfessors((currentProfessors) => currentProfessors.filter((professor) => professor.id !== professorToDelete.id))
+      setMaterials((currentMaterials) =>
+        currentMaterials.map((material) =>
+          material.professor_id === professorToDelete.id
+            ? { ...material, professor_id: null }
+            : material
+        )
+      )
+      setShowDeleteModal(false)
+      setProfessorToDelete(null)
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting professor:', error)
+      alert('\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u062d\u0630\u0641 \u0627\u0644\u0623\u0633\u062a\u0627\u0630: ' + (error.message || '\u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u0639\u0631\u0648\u0641'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleUpdateProfessor = async () => {
@@ -345,6 +379,15 @@ export function AdminProfessors() {
                           ) : (
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                           )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(professor)}
+                          title="Ø­Ø°Ù Ø§Ù„Ø£Ø³ØªØ§Ø°"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -579,6 +622,40 @@ export function AdminProfessors() {
                 </Button>
               </div>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {showDeleteModal && professorToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertTriangle className="w-6 h-6" />
+                <CardTitle className="text-red-600">تأكيد حذف الأستاذ</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700 dark:text-gray-300">
+                هل أنت متأكد أنك تريد حذف الأستاذ <span className="font-bold">{professorToDelete.profiles?.name}</span> نهائيًا؟
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                سيتم فك ارتباطه بالمقررات وحذف بيانات حسابه والإعلانات المرتبطة به، ولا يمكن التراجع عن هذا الإجراء.
+              </p>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="secondary" onClick={() => { setShowDeleteModal(false); setProfessorToDelete(null) }}>
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  disabled={saving}
+                  className="bg-red-600 hover:bg-red-700 focus:bg-red-700 text-white"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  تأكيد الحذف
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
