@@ -80,6 +80,9 @@ export function AdminProfessors() {
     const matchesCollege = filterCollege === 'all' || professor.college_id === parseInt(filterCollege)
     return matchesSearch && matchesCollege
   })
+  const parseRequiredInt = (value) => parseInt(value, 10)
+  const parseOptionalInt = (value) => (value === '' || value === null || value === undefined ? null : parseInt(value, 10))
+
 
   const handleAddProfessor = async () => {
     try {
@@ -88,10 +91,11 @@ export function AdminProfessors() {
         professor_id: newProfessor.professorId,
         name: newProfessor.name,
         email: newProfessor.email,
-        college_id: parseInt(newProfessor.collegeId),
-        department_id: parseInt(newProfessor.departmentId),
+        college_id: parseRequiredInt(newProfessor.collegeId),
+        department_id: parseOptionalInt(newProfessor.departmentId),
         title: newProfessor.title
       })
+      alert('\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0623\u0633\u062a\u0627\u0630 \u0628\u0646\u062c\u0627\u062d.\n\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645: ' + newProfessor.email + '\n\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0627\u0644\u0645\u0624\u0642\u062a\u0629: ' + newProfessor.email)
       await loadData()
       setShowAddModal(false)
       setNewProfessor({
@@ -100,16 +104,15 @@ export function AdminProfessors() {
         email: '',
         collegeId: '',
         departmentId: '',
-        title: 'أستاذ مساعد',
+        title: '\u0623\u0633\u062a\u0627\u0630 \u0645\u0633\u0627\u0639\u062f',
       })
     } catch (error) {
       console.error('Error creating professor:', error)
-      alert('حدث خطأ أثناء إنشاء الأستاذ: ' + error.message)
+      alert('\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0623\u0633\u062a\u0627\u0630: ' + (error.message || '\u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u0639\u0631\u0648\u0641'))
     } finally {
       setSaving(false)
     }
   }
-
   const handleToggleStatus = async (professorId) => {
     try {
       const professor = professors.find(p => p.id === professorId)
@@ -178,8 +181,8 @@ export function AdminProfessors() {
       await Promise.all([
         adminService.updateProfessor(selectedProfessor.id, {
           professor_id: selectedProfessor.professorId,
-          college_id: parseInt(selectedProfessor.collegeId),
-          department_id: parseInt(selectedProfessor.departmentId),
+          college_id: parseRequiredInt(selectedProfessor.collegeId),
+          department_id: parseOptionalInt(selectedProfessor.departmentId),
           title: selectedProfessor.title,
           status: selectedProfessor.status
         }),
@@ -205,7 +208,7 @@ export function AdminProfessors() {
       setSelectedProfessor(null)
     } catch (error) {
       console.error('Error updating professor:', error)
-      alert('حدث خطأ أثناء تحديث الأستاذ: ' + error.message)
+      alert('\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0623\u0633\u062a\u0627\u0630: ' + (error.message || '\u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u0639\u0631\u0648\u0641'))
     } finally {
       setSaving(false)
     }
@@ -252,7 +255,7 @@ export function AdminProfessors() {
       setSelectedProfessor(null)
     } catch (error) {
       console.error('Error saving assignments:', error)
-      alert('حدث خطأ أثناء حفظ تعيين المقررات: ' + error.message)
+      alert('??? ??? ????? ????? ???????: ' + (error.message || '??? ??? ?????'))
     } finally {
       setSaving(false)
     }

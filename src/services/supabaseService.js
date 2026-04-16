@@ -2063,15 +2063,25 @@ export const adminService = {
   },
 
   async updateProfessorProfile(professorId, updates) {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', professorId)
-      .select()
-      .single()
 
     if (error) throw error
-    return data
+
+    const { data: refreshedProfile, error: refreshError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', professorId)
+      .maybeSingle()
+
+    if (refreshError) throw refreshError
+    if (!refreshedProfile) {
+      throw new Error('تعذر التحقق من تحديث ملف الأستاذ. غالبًا تحتاج سياسة "Admins can update all profiles" في Supabase.')
+    }
+
+    return refreshedProfile
   },
 
   async deleteProfessor(professorId) {
